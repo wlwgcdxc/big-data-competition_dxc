@@ -1,5 +1,5 @@
 ### big-data-competition_dxc
-======================================
+================================
 
 ##### 解析文本
     //定义样例类
@@ -58,8 +58,9 @@
     yesterdayDF.registerTempTable("yesterdayDF")
     agoDF.registerTempTable("agoDF")
 
-##### //合并 （3.15 离歌 3 0 0 0）（3.15 离歌 0 4 0 ）（3.15 离歌 0 0 5） 之后需要把这些合并在一起，变成（3.15 离歌 3 4 5）
-    val todayCollect = sqlContext.sql("select date,songid, sum(broadcast) as playTime,sum(download) as download,sum(collect) as collect from todayDF group by date,songid order by date")
+##### //合并 （3.15 离歌 3 0 0 0）（3.15 离歌 0 4 0 ）（3.15 离歌 0 0 5） 之后需要把这些合并在一起，变成（3.15 离歌 3 4 5)
+    val todayCollect = sqlContext.sql("select date,songid, sum(broadcast) as playTime,sum(download) as download,sum(collect) as collect 
+    from todayDF group by date,songid order by date")
     val yesterdayCollect = sqlContext.sql("select date,songid, sum(broadcast) as playTime,sum(download) as download,sum(collect) as collect from yesterdayDF group by date,songid order by date")
     val agoCollect = sqlContext.sql("select date,songid, sum(broadcast) as playTime,sum(download) as download,sum(collect) as collect from agoDF group by date,songid order by date")
     todayCollect.registerTempTable("todayCollect")
