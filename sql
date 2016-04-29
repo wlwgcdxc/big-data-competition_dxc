@@ -1,5 +1,5 @@
-#  big-data-competition_dxc
-
+# *big-data-competition_dxc*
+======================================
 case class SongInfo(songid: String, artistid: String, publishTime: String, initialPlayTimes: Int, language: Int, gender: Int)  //定义样例类
 val songText = sc.textFile("/opt/meizhang/trycache/mars_tianchi_songs.csv") //将格式化文本转换为RDD，其中文本的每一行就是RDD中的一项纪录
 val songinfo = songText.map( s => s.split(",")).filter(x =>x.length==6).map(s=>SongInfo(s(0), s(1), s(2), s(3).toInt, s(4).toInt, s(5).toInt)) //RDD的transformation，将RDD中存储的string类型转换为定义的样例类SongInfo
@@ -33,7 +33,7 @@ object Convert extends Serializable{
       return result;
     } 
 
-###  统计播放量 下载量  收藏量（同时，记录昨天的数据，前天的数据）
+### 统计播放量 下载量  收藏量（同时，记录昨天的数据，前天的数据）
 
 //需要重新定义一个case class,用来分别统计歌曲的播放量，下载量和收藏量，也就是将actionType分开统计
 case class RealInfo(date: String, songid: String, broadcast: Int, download: Int, collect: Int)
@@ -50,7 +50,7 @@ todayDF.registerTempTable("todayDF")
 yesterdayDF.registerTempTable("yesterdayDF")
 agoDF.registerTempTable("agoDF")
 
-###  //合并 （3.15 离歌 3 0 0 0）（3.15 离歌 0 4 0 ）（3.15 离歌 0 0 5） 之后需要把这些合并在一起，变成（3.15 离歌 3 4 5）
+### //合并 （3.15 离歌 3 0 0 0）（3.15 离歌 0 4 0 ）（3.15 离歌 0 0 5） 之后需要把这些合并在一起，变成（3.15 离歌 3 4 5）
 val todayCollect = sqlContext.sql("select date,songid, sum(broadcast) as playTime,sum(download) as download,sum(collect) as collect from todayDF group by date,songid order by date")
 val yesterdayCollect = sqlContext.sql("select date,songid, sum(broadcast) as playTime,sum(download) as download,sum(collect) as collect from yesterdayDF group by date,songid order by date")
 val agoCollect = sqlContext.sql("select date,songid, sum(broadcast) as playTime,sum(download) as download,sum(collect) as collect from agoDF group by date,songid order by date")
@@ -58,12 +58,12 @@ todayCollect.registerTempTable("todayCollect")
 yesterdayCollect.registerTempTable("yesterdayCollect")
 agoCollect.registerTempTable("agoCollect")
 
-###  //将今天，昨天，后天的数据统计到一个表里
+### //将今天，昨天，后天的数据统计到一个表里
 //今天的表跟昨天的表join，生成join1  dataFrame
 val join1 = todayCollect.join(yesterdayCollect, Seq("date", "songid"), "left_outer").select(todayCollect("*"), yesterdayCollect("playTime").as("yesterdayPlay"), yesterdayCollect("download").as("yesterdayDown"), yesterdayCollect("collect").as("yesterdayC")) 
 //前两天的大表与前三天的表左连接
 val joinFinally = join1.join(agoCollect,Seq("date", "songid"), "left_outer").select(join1("*"), agoCollect("playTime").as("agoPlay"), agoCollect("download").as("agoDown"), agoCollect("collect").as("agoC")).registerTempTable("joinFinally")
 
-###  //将统计出的信息与包含歌曲全部信息的allinfo表拼接，将播放量，下载量，收藏量作为标签，即（要预测的量）
+### //将统计出的信息与包含歌曲全部信息的allinfo表拼接，将播放量，下载量，收藏量作为标签，即（要预测的量）
 val allSongInfo = sqlContext.sql("select jf.date, jf.songid, al.playTime, download, collect, yesterdayPlay, yesterdayDown, yesterdayC, agoPlay, agoDown, agoC, artistid, publishtime, initialPlayTimes, language, gender from joinFinally as jf, allInfo as al where jf.songid=al.songid and jf.date=al.date order by jf.date").registerTempTable("allSongInfo")
 val finalResult = sqlContext.sql("select * from allSongInfo").rdd.repartition(1).saveAsTextFile("/opt/meizhang/trycache/result_test_final") //这个dataframe包含某天某首歌今天，昨天，前天的播放量，下载量，收藏量, 
