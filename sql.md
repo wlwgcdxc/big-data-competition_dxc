@@ -194,3 +194,11 @@
 	valuesAndPredsPlay.collect()
 	valuesAndPredsDownload.collect()
 
+####但是，最终结果不是一般的差
+训练出来线性模型的权值如下
+![](https://github.com/wlwgcdxc/picture/blob/master/weight.PNG)
+预测值和标签的对比
+![](https://github.com/wlwgcdxc/picture/blob/master/predict.PNG)
+从图中可以看到，标签应该不是成线性变化的
+![](https://github.com/wlwgcdxc/picture/blob/master/proof1.PNG)
+![](https://github.com/wlwgcdxc/picture/blob/master/proof2.PNG)
