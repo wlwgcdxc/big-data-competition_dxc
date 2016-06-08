@@ -194,7 +194,7 @@
 	valuesAndPredsPlay.collect()
 	valuesAndPredsDownload.collect()
 
-####但是，最终结果不是一般的差
+# 但是，最终结果不是一般的差
 训练出来线性模型的权值如下
 ![](https://github.com/wlwgcdxc/picture/blob/master/weight.PNG)
 预测值和标签的对比
