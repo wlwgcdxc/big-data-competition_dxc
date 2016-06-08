@@ -1,6 +1,6 @@
 ### big-data-competition_dxc
 ================================
-
+# 考虑使用线性回归做
 ##### 解析文本
     //定义样例类
     case class SongInfo(songid: String, artistid: String, publishTime: String, initialPlayTimes: Int, language: Int, gender: Int)  
@@ -202,3 +202,5 @@
 从图中可以看到，标签应该不是成线性变化的
 ![](https://github.com/wlwgcdxc/picture/blob/master/proof1.PNG)
 ![](https://github.com/wlwgcdxc/picture/blob/master/proof2.PNG)
+
+#准备使用随机森林，试试非线性的回归或者分类去做
