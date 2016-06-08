@@ -1,7 +1,7 @@
 ### big-data-competition_dxc
 ================================
 # 考虑使用线性回归做
-##### 解析文本
+##### 解析文本(获得一些基本信息)
     //定义样例类
     case class SongInfo(songid: String, artistid: String, publishTime: String, initialPlayTimes: Int, language: Int, gender: Int)  
     //将格式化文本转换为RDD，其中文本的每一行就是RDD中的一项纪录
@@ -77,7 +77,7 @@
     val allSongInfo = sqlContext.sql("select jf.date, jf.songid, al.playTime, download, collect, yesterdayPlay, yesterdayDown, yesterdayC, agoPlay, agoDown, agoC, artistid, publishtime, initialPlayTimes, language, gender from joinFinally as jf, allInfo as al where jf.songid=al.songid and jf.date=al.date order by jf.date").registerTempTable("allSongInfo")
     val finalResult = sqlContext.sql("select * from allSongInfo").rdd.repartition(1).saveAsTextFile("/opt/meizhang/trycache/result_test_final") //这个dataframe包含某天某首歌今天，昨天，前天的播放量，下载量，收藏量, 
 
-#进一步处理
+#进一步处理(做标准化和PCA)
 ----------
 ##### 读数据，注册成表
 	//定义样例类
@@ -203,4 +203,4 @@
 ![](https://github.com/wlwgcdxc/picture/blob/master/proof1.PNG)
 ![](https://github.com/wlwgcdxc/picture/blob/master/proof2.PNG)
 
-#准备使用随机森林，试试非线性的回归或者分类去做
+# 准备使用随机森林，试试非线性的回归或者分类去做
