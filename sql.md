@@ -362,8 +362,9 @@
 	println("downModel.trees:" + downModel.trees)
 	println("collectModel.algo:" + collectModel.algo)
 	println("collectModel.trees:" + collectModel.trees)
-	
-#####从训练数据上看，结果还是挺好的，说明曲线拟合的很好，因为有训练50棵树，所以过拟合的现象应该也不是很严重
+
+![](https://github.com/wlwgcdxc/picture/blob/master/15_03.PNG)	
+从图中可以看到，在训练数据上还是挺好的，说明曲线拟合的比较好。因为有训练50棵树，所以过拟合的现象应该也不是很严重
 ###结果如下
 	playLabelsAndPredictions.collect()
 	downLabelsAndPredictions.collect()
@@ -517,9 +518,13 @@
 	from predict_result 
 	where predict > 0 and artist = "e087f8842fe66efa5ccee42ff791e0ca"
 	order by date
-###结果如图像所示
+###结果如图像所示(直观)
 ![](https://github.com/wlwgcdxc/picture/blob/master/1502.PNG)
 从图中可以看出，前几天还比较相近，但是到了后几天，就完全不行了，基本后一天的记录和前一天的记录完全相同。说明同过预测值，再去连续预测，肯定是有问题的。
+###总体标准差如下
+![](https://github.com/wlwgcdxc/picture/blob/master/15_03.PNG)
+结果比较差
+
 
 #下面考虑使用（）模型预测，其实用随机森林也可以，预测的方法是使用当天的数据去预测一个月，两个月，三个月的记录，然后做一个加权
 
