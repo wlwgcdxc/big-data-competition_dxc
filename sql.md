@@ -205,3 +205,322 @@
 ![](https://github.com/wlwgcdxc/picture/blob/master/proof2.PNG)
 
 # 准备使用随机森林，试试非线性的回归或者分类去做
+###从歌曲信息中获取歌手信息
+	import org.apache.spark.mllib.regression.LabeledPoint
+	import org.apache.spark.mllib.regression.LinearRegressionModel
+	import org.apache.spark.mllib.regression.LinearRegressionWithSGD
+	import org.apache.spark.mllib.linalg.Vectors
+	
+	//val result = sqlContext.read.parquet("/opt/xcdong/trycache/result_stand_before/part-r-00000-3024dba2-f98e-49d2-b533-6f721c5f589a.gz.parquet") 
+	val result = sc.textFile("/opt/xcdong/trycache/textfile/result_stand_before/part-00000") 
+	result.first()
+	result.cache
+	
+	case class SongInfo(date: String, song: String, todayPlay: Int, todayDown: Int, todayCollect: Int, yesPlay: Int, yesDown: Int, yesCollect: Int, playRate: Int, downRate: Int, collectRate: Int, morning: Int, afternoon: Int, artist: String, publishTime: Int, initialTimes: Int, language: Int, gender: Int) 
+	result.map{ e =>
+	  val ele = e.substring(1, e.length - 1).split(",")
+	  SongInfo(ele(0), ele(1), ele(2).toInt, ele(3).toInt, ele(4).toInt, ele(5).toInt, ele(6).toInt, ele(7).toInt, ele(8).toInt, ele(9).toInt, ele(10).toInt, ele(11).toInt, ele(12).toInt, ele(13), ele(14).toInt, ele(15).toInt, ele(16).toInt, ele(17).toInt)
+	}.toDF.registerTempTable("songInfo")
+        
+        val artistInfo = sqlContext.sql("select date, artist,  gender, sum(todayPlay) as todayPlay, sum(todayDown) as todayDown, sum(todayCollect) as todayCollect, sum(yesPlay) as yesPlay, sum(yesDown) as yesDown, sum(yesCollect) as yesCollect, sum(playRate) as playRate, sum(downRate) as downRate, sum(collectRate) as collectRate, sum(morning) as morning, sum(afternoon) as afternoon, sum(publishTime) as publishTime, sum(initialTimes) as initialTimes  from songInfo group by date, artist, gender order by date")
+	artistInfo.registerTempTable("artistInfo")
+	
+	artistInfo.rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/artistInfo")
+	
+	//应该把今天早晨和晚上歌曲的播放次数，以及昨天早晨和晚上歌曲的播放次数都放在一起，前者作为标签，后者作为特征
+	val result = sc.textFile("/opt/xcdong/trycache/artistInfo/part-00000") 
+	result.first()
+	result.cache
+	
+	case class SongInfo(date: String, artist: String, gender: Int, todayPlay: Int, todayDown: Int, todayCollect: Int, yesPlay: Int, yesDown: Int, yesCollect: Int, playRate: Int, downRate: Int, collectRate: Int, morning: Int, afternoon: Int, publishTimes: Int, initialTimes: Int) 
+	val today = result.map{ e =>
+	  val ele = e.substring(1, e.length - 1).split(",")
+	  SongInfo(ele(0), ele(1), ele(2).toInt, ele(3).toInt, ele(4).toInt, ele(5).toInt, ele(6).toInt, ele(7).toInt, ele(8).toInt, ele(9).toInt, ele(10).toInt, ele(11).toInt, ele(12).toInt, ele(13).toInt, ele(14).toInt, ele(15).toInt)
+	}.toDF
+	today.registerTempTable("todaySongInfo")
+	
+	import java.text.ParsePosition
+	import java.text.SimpleDateFormat
+	import java.util.Calendar
+	import java.util.Date
+	import java.util.GregorianCalendar
+	object Convert extends Serializable{
+	    def findYesterday( date: String) : String = {
+	      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+	      val st = sdf.parse(date, new ParsePosition(0))
+	      val cal : GregorianCalendar  = new GregorianCalendar();
+	      cal.setTime(st);
+	      cal.add(Calendar.DAY_OF_MONTH, +1);
+	      val result = sdf.format(cal.getTime());
+	      return result;
+	    } 
+	}
+	
+	val yesterday = today.map { e =>
+	  SongInfo(Convert.findYesterday(e.getString(0)), e.getString(1), e.getInt(2), e.getInt(3), e.getInt(4), e.getInt(5), e.getInt(6), e.getInt(7), e.getInt(8), e.getInt(9), e.getInt(10), e.getInt(11), e.getInt(12), e.getInt(13), e.getInt(14), e.getInt(15))
+	}.toDF
+	yesterday.registerTempTable("yesterdaySongInfo")
+	
+	val join1 = today.join(yesterday, Seq("date", "artist"), "left_outer").select(today("date").as("date"), today("artist").as("artist"), today("gender").as("gender"), today("todayPlay").as("todayPlay"), today("todayDown").as("todayDown"), today("todayCollect").as("todayCollect"), today("morning").as("todayMorning"), today("afternoon").as("todayAfternoon"), today("yesPlay").as("yesPlay"), today("yesDown").as("yesDown"), today("yesCollect").as("yesCollect"), today("playRate").as("playRate"), today("downRate").as("downRate"), today("collectRate").as("collectRate"), yesterday("morning").as("yesMorning"), yesterday("afternoon").as("yesAfternoon"), today("publishTimes").as("publishTimes"), today("initialTimes").as("initialTimes"))
+	
+	join1.rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/artistInfo_right")
+	
+	//去掉因为表连接产生的null值
+	val songText = sc.textFile("/opt/xcdong/trycache/artistInfo_right")
+	val songinfo = songText.map( s => s.replace("null", "0"))
+	val song = songinfo.repartition(1).saveAsTextFile("/opt/xcdong/trycache/artistInfo_right_1")
+###读取歌手信息
+	val result = sc.textFile("/opt/xcdong/trycache/artistInfo_right_1/part-00000") 
+	result.first()
+	result.cache
+	
+###准备训练数据
+	val parsedPlayData = result.map{s1 => 
+	                            val s = s1.substring(1, s1.length-1).split(",")
+	                            LabeledPoint(s(3).toDouble, Vectors.dense(s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(15).toDouble, s(16).toDouble, s(17).toDouble))}.cache
+	                            
+	val parsedDownData = result.map{s1 => 
+	                            val s = s1.substring(1, s1.length-1).split(",")
+	                            LabeledPoint(s(4).toDouble, Vectors.dense(s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(15).toDouble, s(16).toDouble, s(17).toDouble))}.cache
+	                            
+	val parsedCollectData = result.map{s1 => 
+	                            val s = s1.substring(1, s1.length-1).split(",")
+	                            LabeledPoint(s(5).toDouble, Vectors.dense(s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(15).toDouble, s(16).toDouble, s(17).toDouble))}.cache
+	                            
+	val parsedMorning = result.map{s1 => 
+	                            val s = s1.substring(1, s1.length-1).split(",")
+	                            LabeledPoint(s(6).toDouble, Vectors.dense(s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(15).toDouble, s(16).toDouble, s(17).toDouble))}.cache
+	
+	val parsedAfternoon = result.map{s1 => 
+	                            val s = s1.substring(1, s1.length-1).split(",")
+	                            LabeledPoint(s(7).toDouble, Vectors.dense(s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(15).toDouble, s(16).toDouble, s(17).toDouble))}.cache
+###用随机森林模型开始预测
+	import org.apache.spark.mllib.tree.RandomForest
+	import org.apache.spark.mllib.tree.model.RandomForestModel
+	// Train a RandomForest model.
+	//分类数
+	val numClasses = 2
+	//为空表示所有特征为连续量
+	val categoricalFeaturesInfo = Map[Int, Int]()
+	//树的个数,实际中一般比3更多
+	val numTrees = 50
+	//特征子集采样的策略，auto是算法自助选择
+	val featureSubsetStrategy = "auto" // Let the algorithm choose.
+	val impurity = "variance"
+	val maxDepth = 10
+	val maxBins = 100
+	
+	val playModel = RandomForest.trainRegressor(parsedPlayData, categoricalFeaturesInfo,
+	      numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins)
+	val downModel = RandomForest.trainRegressor(parsedDownData, categoricalFeaturesInfo,
+	      numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins)
+	val collectModel = RandomForest.trainRegressor(parsedCollectData, categoricalFeaturesInfo,
+	      numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins)
+	val morningModel = RandomForest.trainRegressor(parsedMorning, categoricalFeaturesInfo,
+	      numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins)
+	val afternoonModel = RandomForest.trainRegressor(parsedAfternoon, categoricalFeaturesInfo,
+	      numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins)  
+###得出模型后，在训练数据上试试，看看误差怎么样
+	// Evaluate model on test instances and compute test error
+	val playLabelsAndPredictions = parsedPlayData.map { point =>
+	      val prediction = playModel.predict(point.features)
+	      (point.label, prediction)
+	    }
+	val downLabelsAndPredictions = parsedDownData.map { point =>
+	      val prediction = downModel.predict(point.features)
+	      (point.label, prediction)
+	    }
+	val collectLabelsAndPredictions = parsedCollectData.map { point =>
+	      val prediction = collectModel.predict(point.features)
+	      (point.label, prediction)
+	    }
+	val morningLabelsAndPredictions = parsedMorning.map { point =>
+	      val prediction = morningModel.predict(point.features)
+	      (point.label, prediction)
+	    }
+	val afternoonLabelsAndPredictions = parsedAfternoon.map { point =>
+	      val prediction = afternoonModel.predict(point.features)
+	      (point.label, prediction)
+	    }
+	    
+	val playMSE = playLabelsAndPredictions.map { case (v, p) => math.pow((v - p), 2) }.mean()
+	val downMSE = downLabelsAndPredictions.map { case (v, p) => math.pow((v - p), 2) }.mean()
+	val collectMSE = collectLabelsAndPredictions.map { case (v, p) => math.pow((v - p), 2) }.mean()
+	val morningMSE = morningLabelsAndPredictions.map { case (v, p) => math.pow((v - p), 2) }.mean()
+	val afternoonMSE = afternoonLabelsAndPredictions.map { case (v, p) => math.pow((v - p), 2) }.mean()
+	
+	println("play Mean Squared Error = " + playMSE)
+	println("down Mean Squared Error = " + downMSE)
+	println("collect Mean Squared Error = " + collectMSE)
+	println("morning Mean Squared Error = " + morningMSE)
+	println("afternoon Mean Squared Error = " + afternoonMSE)
+	//println("Learned regression forest model:\n" + model.toDebugString)
+	
+	println("playModel.algo:" + playModel.algo)
+	println("playModel.trees:" + playModel.trees)
+	println("downModel.algo:" + downModel.algo)
+	println("downModel.trees:" + downModel.trees)
+	println("collectModel.algo:" + collectModel.algo)
+	println("collectModel.trees:" + collectModel.trees)
+	
+#####从训练数据上看，结果还是挺好的，说明曲线拟合的很好，因为有训练50棵树，所以过拟合的现象应该也不是很严重
+###结果如下
+	playLabelsAndPredictions.collect()
+	downLabelsAndPredictions.collect()
+	collectLabelsAndPredictions.collect()
+	morningLabelsAndPredictions.collect()
+	afternoonLabelsAndPredictions.collect()
+![](https://github.com/wlwgcdxc/picture/blob/master/15_01.PNG)
+从图中可以看出，在训练数据上还是挺不错的
+###开始提取需要预测的数据（这里希望通过7.30和7.31的数据，预测出8月的数据）
+val result_temp = sc.textFile("/opt/xcdong/trycache/artistInfo_right_1/part-00000") 
+result_temp.first()
+result_temp.cache
+
+case class ArtistInfo_right_1(date: String, artist: String, gender: Int, todayPlay: Int, todayDown: Int, todayCollect: Int, todayMorning: Int, todayAfternoon: Int, yesPlay: Int, yesDown: Int, yesCollect: Int, playRate: Int, downRate: Int, collectRate: Int, yesMorning: Int, yesAfternoon: Int, publishTimes: Int, initialTimes: Int)
+
+val result_temp_1 = result_temp.map { e =>
+    val ele = e.substring(1, e.length - 1).split(",")
+    ArtistInfo_right_1(ele(0).toString, ele(1).toString, ele(2).toInt, ele(3).toInt, ele(4).toInt, ele(5).toInt, ele(6).toInt, ele(7).toInt, ele(8).toInt, ele(9).toInt, ele(10).toInt, ele(11).toInt, ele(12).toInt, ele(13).toInt, ele(14).toInt, ele(15).toInt, ele(16).toInt, ele(17).toInt)
+}.toDF
+result_temp_1.registerTempTable("artistInfo_right_1")
+
+val result_final = sqlContext.sql("select * from artistInfo_right_1 where date = '20150731' ").rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/random_forest_7.31_8/artistInfo_0731")
+
+###开始使用模型预测
+val artistInfo_0731 = sc.textFile("/opt/xcdong/trycache/random_forest_7.31_8/artistInfo_0731")
+artistInfo_0731.first()
+artistInfo_0731.cache
+
+import java.io._
+//为了写文件
+object WriteToCSV extends Serializable{
+   val writer = new PrintWriter(new File("/opt/xcdong/trycache/random_forest_7.31_8/artist_predict"), "UTF-8") 
+   def getWriter(): PrintWriter = return writer
+   def closeWriter() {
+       writer.close()
+   } 
+}
+//为了拿到下一天的具体日期
+import java.text.ParsePosition
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.GregorianCalendar
+object Convert extends Serializable{
+    def findYesterday( date: String) : String = {
+      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+      val st = sdf.parse(date, new ParsePosition(0))
+      val cal : GregorianCalendar  = new GregorianCalendar();
+      cal.setTime(st);
+      cal.add(Calendar.DAY_OF_MONTH, +1);
+      val result = sdf.format(cal.getTime());
+      return result;
+    } 
+}
+
+val artistInfo_0731_array = artistInfo_0731.collect()
+for (e: String <- artistInfo_0731_array) {
+    var ele = e.substring(1, e.length - 1).split(",")
+    var date = "20150731"
+    while (date != "20150830") {
+        date = Convert.findYesterday(ele(0).toString)
+        val artist = ele(1).toString
+        val gender = ele(2).toInt
+
+        val yesPlay = ele(3).toInt
+        val yesDown = ele(4).toInt
+        val yesCollect = ele(5).toInt
+        val playRate = ele(3).toInt - ele(8).toInt
+        val downRate = ele(4).toInt - ele(9).toInt
+        val collectRate = ele(5).toInt - ele(10).toInt
+        val yesMorning = ele(6).toInt
+        val yesAfternoon = ele(7).toInt 
+        val publishTimes = ele(16).toInt + 500
+        val initialTimes = ele(17).toInt
+       
+       
+        val prePlay = playModel.predict(Vectors.dense(yesPlay.toDouble, yesDown.toDouble, yesCollect.toDouble, playRate.toDouble, downRate.toDouble, collectRate.toDouble, yesMorning.toDouble, yesAfternoon.toDouble, publishTimes.toDouble, initialTimes.toDouble))
+        val preDown = downModel.predict(Vectors.dense(yesPlay.toDouble, yesDown.toDouble, yesCollect.toDouble, playRate.toDouble, downRate.toDouble, collectRate.toDouble, yesMorning.toDouble, yesAfternoon.toDouble, publishTimes.toDouble, initialTimes.toDouble))
+        val preCollect  = collectModel.predict(Vectors.dense(yesPlay.toDouble, yesDown.toDouble, yesCollect.toDouble, playRate.toDouble, downRate.toDouble, collectRate.toDouble, yesMorning.toDouble, yesAfternoon.toDouble, publishTimes.toDouble, initialTimes.toDouble))
+        val preMorning = morningModel.predict(Vectors.dense(yesPlay.toDouble, yesDown.toDouble, yesCollect.toDouble, playRate.toDouble, downRate.toDouble, collectRate.toDouble, yesMorning.toDouble, yesAfternoon.toDouble, publishTimes.toDouble, initialTimes.toDouble))
+        val preAfternoon = afternoonModel.predict(Vectors.dense(yesPlay.toDouble, yesDown.toDouble, yesCollect.toDouble, playRate.toDouble, downRate.toDouble, collectRate.toDouble, yesMorning.toDouble, yesAfternoon.toDouble, publishTimes.toDouble, initialTimes.toDouble))
+        
+        val str = new StringBuffer()
+        str.append(date)
+        str.append(",")
+        str.append(artist)
+        str.append(",")
+        str.append(gender)
+        str.append(",")
+        str.append(prePlay.toInt)
+        str.append(",")
+        str.append(preDown.toInt)
+        str.append(",")
+        str.append(preCollect.toInt)
+        str.append(",")
+        str.append(preMorning.toInt)
+        str.append(",")
+        str.append(preAfternoon.toInt)
+        str.append(",")
+        str.append(yesPlay)
+        str.append(",")
+        str.append(yesDown)
+        str.append(",")
+        str.append(yesCollect)
+        str.append(",")
+        str.append(playRate)
+        str.append(",")
+        str.append(downRate)
+        str.append(",")
+        str.append(collectRate)
+        str.append(",")
+        str.append(yesMorning)
+        str.append(",")
+        str.append(yesAfternoon)
+        str.append(",")
+        str.append(publishTimes)
+        str.append(",")
+        str.append(initialTimes)
+        WriteToCSV.getWriter.println(str)
+        ele = str.toString().split(",")
+    }
+}
+WriteToCSV.closeWriter()
+
+###查看预测结果是否精准
+case class ArtistInfo_right_1(date: String, artist: String, gender: Int, todayPlay: Int, todayDown: Int, todayCollect: Int, todayMorning: Int, todayAfternoon: Int, yesPlay: Int, yesDown: Int, yesCollect: Int, playRate: Int, downRate: Int, collectRate: Int, yesMorning: Int, yesAfternoon: Int, publishTimes: Int, initialTimes: Int)
+
+val label = sc.textFile("/opt/xcdong/trycache/artistInfo_right_1") 
+label.first()
+label.cache
+
+val label_res = label.map { e =>
+    val ele = e.substring(1, e.length - 1).split(",")
+    ArtistInfo_right_1(ele(0).toString, ele(1).toString, ele(2).toInt, ele(3).toInt, ele(4).toInt, ele(5).toInt, ele(6).toInt, ele(7).toInt, ele(8).toInt, ele(9).toInt, ele(10).toInt, ele(11).toInt, ele(12).toInt, ele(13).toInt, ele(14).toInt, ele(15).toInt, ele(16).toInt, ele(17).toInt)
+}.toDF
+
+val predict = sc.textFile("/opt/xcdong/trycache/random_forest_7.31_8/artist_predict") 
+predict.first()
+predict.cache
+
+val predict_res = predict.map { e =>
+    val ele = e.split(",")
+    ArtistInfo_right_1(ele(0).toString, ele(1).toString, ele(2).toInt, ele(3).toInt, ele(4).toInt, ele(5).toInt, ele(6).toInt, ele(7).toInt, ele(8).toInt, ele(9).toInt, ele(10).toInt, ele(11).toInt, ele(12).toInt, ele(13).toInt, ele(14).toInt, ele(15).toInt, ele(16).toInt, ele(17).toInt)
+}.toDF
+
+val predict_result = label_res.join(predict_res, Seq("date", "artist"), "left_outer").select(label_res("date").as("date"), label_res("artist").as("artist"), label_res("todayPlay").as("label"), predict_res("todayPlay").as("predict"))
+predict_result.registerTempTable("predict_result")
+
+%sql
+select * 
+from predict_result 
+where predict > 0 and artist = "e087f8842fe66efa5ccee42ff791e0ca"
+order by date
+###结果如图像所示
+![](https://github.com/wlwgcdxc/picture/blob/master/1502.PNG)
+从图中可以看出，前几天还比较相近，但是到了后几天，就完全不行了，基本后一天的记录和前一天的记录完全相同。说明同过预测值，再去连续预测，肯定是有问题的。
+
+#下面考虑使用（）模型预测，其实用随机森林也可以，预测的方法是使用当天的数据去预测一个月，两个月，三个月的记录，然后做一个加权
+
+	
