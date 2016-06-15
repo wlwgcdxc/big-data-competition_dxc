@@ -1,6 +1,7 @@
 ### big-data-competition_dxc
 ================================
 # 考虑使用线性回归做
+### (根据前两天的，预测第三天的播放记录。然后找到每个歌手8.29和8.30的记录，预测出8.31的记录，然后以预测出的8.31的记录为基础继续往下预测)
 ##### 解析文本(获得一些基本信息)
     //定义样例类
     case class SongInfo(songid: String, artistid: String, publishTime: String, initialPlayTimes: Int, language: Int, gender: Int)  
