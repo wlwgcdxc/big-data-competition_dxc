@@ -526,7 +526,215 @@
 结果比较差
 
 
-#下面考虑使用（）模型预测，其实用随机森林也可以。
-###预测的方法是使用当天的数据去预测一个月，两个月，三个月后的记录，然后在8月份的数据上做一个加权
+#下面考虑使用（GBDT）预测，其实用随机森林也可以。GBDT的准确率应该更高，但是速度相比较RF慢多了，因为难并行化
+###预测的方法是使用当天的数据去预测一个月，两个月之后的数据，然后使用7月份预测一个月之后的数据，6月份预测两个月之后的数据。然后，对他们预测出的8月份的数据做一个加权，得到8月份的数据
 
+###找到某天一个月，两个月之后的日期，找到某天是星期几
+	import java.text.ParsePosition
+	import java.text.SimpleDateFormat
+	import java.util.Calendar
+	import java.util.Date
+	import java.util.GregorianCalendar
 	
+	object Convert extends Serializable{
+	    def findYesterday( date: String) : String = {//为了找到昨天的歌手播放量等信息
+	      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+	      val st = sdf.parse(date, new ParsePosition(0))
+	      val cal : GregorianCalendar  = new GregorianCalendar();
+	      cal.setTime(st);
+	      cal.add(Calendar.DAY_OF_MONTH, +1);
+	      val result = sdf.format(cal.getTime());
+	      return result;
+	    }
+	    
+	    def findNextMonth(date: String) : String = {//为了找到下个月该歌手的播放量
+	      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+	      val st = sdf.parse(date, new ParsePosition(0))
+	      val cal : GregorianCalendar  = new GregorianCalendar();
+	      cal.setTime(st);
+	      cal.add(Calendar.DAY_OF_MONTH, -30);
+	      val result = sdf.format(cal.getTime());
+	      return result;
+	    }
+	    
+	    def findNextTwoMonth(date: String) : String = {//为了找到下两个月该歌手的播放量
+	      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+	      val st = sdf.parse(date, new ParsePosition(0))
+	      val cal : GregorianCalendar  = new GregorianCalendar();
+	      cal.setTime(st);
+	      cal.add(Calendar.DAY_OF_MONTH, -60);
+	      val result = sdf.format(cal.getTime());
+	      return result;
+	    }
+	    
+	    def findBeforeMonth(date: String) : String = {//为了找到下个月该歌手的播放量
+	      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+	      val st = sdf.parse(date, new ParsePosition(0))
+	      val cal : GregorianCalendar  = new GregorianCalendar();
+	      cal.setTime(st);
+	      cal.add(Calendar.DAY_OF_MONTH, +30);
+	      val result = sdf.format(cal.getTime());
+	      return result;
+	    }
+	    
+	    def findBeforeTwoMonth(date: String) : String = {//为了找到下两个月该歌手的播放量
+	      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+	      val st = sdf.parse(date, new ParsePosition(0))
+	      val cal : GregorianCalendar  = new GregorianCalendar();
+	      cal.setTime(st);
+	      cal.add(Calendar.DAY_OF_MONTH, +60);
+	      val result = sdf.format(cal.getTime());
+	      return result;
+	    }
+	    
+	    def findWeek(date: String) : Int = {//为了找到该天是星期几
+	      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+	      val st = sdf.parse(date, new ParsePosition(0))
+	      val cal : GregorianCalendar  = new GregorianCalendar();
+	      cal.setTime(st);
+	      val result = cal.get(Calendar.DAY_OF_WEEK)
+	      return result;
+	    }
+	}
+###读入原始表，并添加星期特征
+	val artistInfo = sc.textFile("/opt/xcdong/trycache/artistInfo_right_1/part-00000")
+	artistInfo.first
+	case class Artist(date: String, artist: String, gender: Int, weekDay: Int, todayPlay: Int, todayDown: Int, todayCollect: Int, todayMorning: Int, todayAfternoon: Int, yesPlay: Int, yesDown: Int, yesCollect: Int, playRate: Int, downRate: Int, collectRate: Int, yesMorning: Int, yesAfternoon: Int, publishTimes: Int, initialTimes: Int)
+	val artistDf = artistInfo.map { ele =>
+	    val e = ele.substring(1, ele.length - 1).split(",")
+	    Artist(e(0), e(1), e(2).toInt, Convert.findWeek(e(0).toString), e(3).toInt, e(4).toInt, e(5).toInt, e(6).toInt, e(7).toInt, e(8).toInt, e(9).toInt, e(10).toInt, e(11).toInt, e(12).toInt, e(13).toInt, e(14).toInt, e(15).toInt, e(16).toInt, e(17).toInt)
+	}.toDF
+###将测试数据和训练数据分开，训练数据为（3,4,5,6,7月的数据）,测试数据为（8月的数据）
+	artistDf.registerTempTable("artist_all_info")
+	val artist_1 = sqlContext.sql("select * from artist_all_info where date > '20150731' order by date ").rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT/test_data_8")
+	val artist_1 = sqlContext.sql("select * from artist_all_info where date < '20150801' order by date ").rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT/train_data_3-7_ori")
+###在训练数据上，找到一个月和两个月之后歌曲的播放量，作为两次预测（一月之后预测模型，二月之后预测模型）的标签
+	val trainData = sc.textFile("/opt/xcdong/trycache/GBDT/train_data_3-7_ori")
+	trainData.first
+	case class Artist(date: String, artist: String, gender: Int, weekDay: Int, todayPlay: Int, todayDown: Int, todayCollect: Int, todayMorning: Int, todayAfternoon: Int, yesPlay: Int, yesDown: Int, yesCollect: Int, playRate: Int, downRate: Int, collectRate: Int, yesMorning: Int, yesAfternoon: Int, publishTimes: Int, initialTimes: Int)
+	val trainDataDf_1 = trainData.map { ele =>
+	    val e = ele.substring(1, ele.length - 1).split(",")
+	    Artist(e(0), e(1), e(2).toInt, e(3).toInt, e(4).toInt, e(5).toInt, e(6).toInt, e(7).toInt, e(8).toInt, e(9).toInt, e(10).toInt, e(11).toInt, e(12).toInt, e(13).toInt, e(14).toInt, e(15).toInt, e(16).toInt, e(17).toInt, e(18).toInt)
+	}.toDF
+	trainDataDf_1.first
+	//找到一月之后，两月之后歌曲的播放量
+	trainDataDf_1.registerTempTable("trainDataDf_1")
+	case class NextMonthInfo(date: String, nextMonth: String, artist: String, nextMonthPlay: Int)
+	case class NextTwoMonthInfo(date: String, nextTwoMonth: String, artist: String, nextTwoMonthPlay: Int)
+	val trainDataDf_2 = sqlContext.sql("select date, artist, todayPlay from trainDataDf_1").map { ele =>
+	    NextMonthInfo(Convert.findNextMonth(ele.getString(0)), ele.getString(0), ele.getString(1), ele.getInt(2))
+	}.toDF
+	val trainDataDf_3 = sqlContext.sql("select date, artist, todayPlay from trainDataDf_1").map { ele =>
+	    NextTwoMonthInfo(Convert.findNextTwoMonth(ele.getString(0)), ele.getString(0), ele.getString(1), ele.getInt(2))
+	}.toDF
+	//做表连接，将一月之后，两月之后的数据作为标签，拼接到训练数据上
+	val trainDataDf_4 = trainDataDf_1.join(trainDataDf_2, Seq("date", "artist"), "left_outer").select(trainDataDf_1("date").as("date"), trainDataDf_1("artist").as("artist"), trainDataDf_2("nextMonth").as("nextMonth"), trainDataDf_2("nextMonthPlay").as("nextMonthPlay"), trainDataDf_1("gender").as("gender"), trainDataDf_1("weekDay").as("weekDay"), trainDataDf_1("todayPlay").as("todayPlay"), trainDataDf_1("todayDown").as("todayDown"),  trainDataDf_1("todayCollect").as("todayCollect"), trainDataDf_1("todayMorning").as("todayMorning"), trainDataDf_1("todayAfternoon").as("todayAfternoon"), trainDataDf_1("yesPlay").as("yesPlay"), trainDataDf_1("yesDown").as("yesDown"), trainDataDf_1("yesCollect").as("yesCollect"), trainDataDf_1("playRate").as("playRate"), trainDataDf_1("downRate").as("downRate"),  trainDataDf_1("collectRate").as("collectRate"), trainDataDf_1("yesMorning").as("yesMorning"), trainDataDf_1("yesAfternoon").as("yesAfternoon"), trainDataDf_1("publishTimes").as("publishTimes"), trainDataDf_1("initialTimes").as("initialTimes"))
+	trainDataDf_4.first
+	
+	val trainDataDf_5 = trainDataDf_4.join(trainDataDf_3, Seq("date", "artist"), "left_outer").select(trainDataDf_4("date").as("date"), trainDataDf_4("artist").as("artist"), trainDataDf_4("nextMonth").as("nextMonth"), trainDataDf_4("nextMonthPlay").as("nextMonthPlay"), trainDataDf_3("nextTwoMonth").as("nextTwoMonth"), trainDataDf_3("nextTwoMonthPlay").as("nextTwoMonthPlay"), trainDataDf_4("gender").as("gender"), trainDataDf_4("weekDay").as("weekDay"), trainDataDf_4("todayPlay").as("todayPlay"), trainDataDf_4("todayDown").as("todayDown"),  trainDataDf_4("todayCollect").as("todayCollect"), trainDataDf_4("todayMorning").as("todayMorning"), trainDataDf_4("todayAfternoon").as("todayAfternoon"), trainDataDf_4("yesPlay").as("yesPlay"), trainDataDf_4("yesDown").as("yesDown"), trainDataDf_4("yesCollect").as("yesCollect"), trainDataDf_4("playRate").as("playRate"), trainDataDf_4("downRate").as("downRate"),  trainDataDf_4("collectRate").as("collectRate"), trainDataDf_4("yesMorning").as("yesMorning"), trainDataDf_4("yesAfternoon").as("yesAfternoon"), trainDataDf_4("publishTimes").as("publishTimes"), trainDataDf_4("initialTimes").as("initialTimes"))
+	trainDataDf_5.first
+	//保存收据
+	trainDataDf_5.rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT/train_data_3-7_ori_tmp")
+	//去掉包含的null值
+	val train_data_result = sc.textFile("/opt/xcdong/trycache/GBDT/train_data_3-7_ori_tmp").map( s => s.replace("null", "0")).repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT/train_data_3-7_end")
+###准备数据
+	import org.apache.spark.mllib.regression.LabeledPoint
+	import org.apache.spark.mllib.linalg.Vectors
+	val data = sc.textFile("/opt/xcdong/trycache/GBDT/train_data_3-7_end").map(ele => ele.substring(1, ele.length-1).split(","))
+	//一月之后歌曲播放量的模型需要的数据
+	val oneMonthAfterData = data.filter(e => e(0)<"20150701").map(s => LabeledPoint(s(3).toDouble, Vectors.dense(s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(15).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble, s(22).toDouble))).cache
+	//两月之后歌曲播放量的模型需要的数据
+	val twoMonthAfterData = data.filter(e => e(0)<"20150601").map(s => LabeledPoint(s(5).toDouble, Vectors.dense(s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(15).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble, s(22).toDouble))).cache
+###训练模型
+	import org.apache.spark.mllib.tree.GradientBoostedTrees
+	import org.apache.spark.mllib.tree.configuration.BoostingStrategy
+	import org.apache.spark.mllib.tree.model.GradientBoostedTreesModel
+	import org.apache.spark.mllib.util.MLUtils
+	
+	//通常GRDT使用多个深度小的树，进行预测，效果比较好
+	// The defaultParams for Regression use SquaredError by default.
+	//boostingStrategy.numIterations = 3 //这个默认的是100，也就是会产生100个树
+	//boostingStrategy.learningRate = 0.1 //学习率默认的是0.1
+	val boostingStrategy = BoostingStrategy.defaultParams("Regression")
+	boostingStrategy.treeStrategy.maxDepth = 5
+	boostingStrategy.treeStrategy.numClasses = 2
+	boostingStrategy.numIterations = 330
+	// Empty categoricalFeaturesInfo indicates all features are continuous.
+	boostingStrategy.treeStrategy.categoricalFeaturesInfo = Map[Int, Int]((0, 4), (1, 8))
+	val oneMonthAfterModel = GradientBoostedTrees.train(oneMonthAfterData, boostingStrategy)
+	// 看看在训练数据上拟合的怎么样
+	val oneMonthLabelsAndPredictions = oneMonthAfterData.map { point =>
+	  val prediction = oneMonthAfterModel.predict(point.features)
+	  (point.label, prediction)
+	}
+	val oneMonthTestMSE = oneMonthLabelsAndPredictions.map{ case(v, p) => math.pow((v - p), 2)}.mean()
+	println("after one month, Test Mean Squared Error = " + oneMonthTestMSE)
+	//println("Learned regression GBT model:\n" + oneMonthAfterModel.toDebugString)
+	
+	//训练两月之后歌曲的播放量的模型
+	val twoMonthAfterModel = GradientBoostedTrees.train(twoMonthAfterData, boostingStrategy)
+	val twoMonthLabelsAndPredictions = twoMonthAfterData.map { point =>
+	  val prediction = twoMonthAfterModel.predict(point.features)
+	  (point.label, prediction)
+	}
+	val twoMonthTestMSE = twoMonthLabelsAndPredictions.map{ case(v, p) => math.pow((v - p), 2)}.mean()
+	println("after two month, Test Mean Squared Error = " + twoMonthTestMSE)
+
+###预测实际值
+	import org.apache.spark.mllib.regression.LabeledPoint
+	import org.apache.spark.mllib.linalg.Vectors
+	
+	case class PredictArtistInfo(date: String, artist: String, predict: Int)
+	case class RealArtistInfo(date: String, artist: String, playTimes: Int)
+	val data = sc.textFile("/opt/xcdong/trycache/GBDT/train_data_3-7_end").map(ele => ele.substring(1, ele.length-1).split(","))
+	
+	val _7to8 = data.filter(e => e(0)>"20150630").map { s =>
+	    val prediction = oneMonthAfterModel.predict(Vectors.dense(s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(15).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble, s(22).toDouble))
+		(Convert.findBeforeMonth(s(0)), s(1), prediction)
+	}.map { e =>
+	    PredictArtistInfo(e._1, e._2, e._3.toInt)
+	}.toDF
+	_7to8.collect
+	val _6to8 = data.filter(e => e(0)>"20150520" && e(0)<"20150720").map { s =>
+		val prediction = twoMonthAfterModel.predict(Vectors.dense(s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(15).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble, s(22).toDouble))
+		(Convert.findBeforeTwoMonth(s(0)), s(1), prediction)	
+	}.map { e =>
+	    PredictArtistInfo(e._1, e._2, e._3.toInt)
+	}.toDF
+	_6to8.collect
+	val predict_result = _7to8.join(_6to8, Seq("date", "artist"), "left_outer").select(_7to8("*"), _6to8("predict").as("predict_twoMonth")).map { e =>
+	    val mean = (e.getInt(2) + e.getInt(3)) / 2
+		(e.getString(0), e.getString(1), mean)
+	}.map { e =>
+	    PredictArtistInfo(e._1, e._2, e._3)
+	}.toDF
+	predict_result.rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT/predict_data_8")
+	predict_result.collect
+###和8月实际的播放量相比较，看看效果怎么样	
+	case class PredictArtistInfo(date: String, artist: String, predict: Int)
+	case class RealArtistInfo(date: String, artist: String, playTimes: Int)
+	
+	val predict_data = sc.textFile("/opt/xcdong/trycache/GBDT/predict_data_8").map(ele => ele.substring(1, ele.length-1).split(",")).map { e =>
+	    PredictArtistInfo(e(0), e(1), e(2).toInt)
+	}.toDF
+	println("haha")
+	val real_data = sc.textFile("/opt/xcdong/trycache/GBDT/test_data_8").map(ele => ele.substring(1, ele.length-1).split(",")).map { e =>
+	    RealArtistInfo(e(0), e(1), e(4).toInt)
+	}.toDF
+	println("heihei")
+	val contrast = real_data.join(predict_data, Seq("date", "artist"), "left_outer").select(real_data("*"), predict_data("predict"))
+	contrast.rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT/contrast_data_8")
+	contrast.map{ e => math.pow((e.getInt(2) - (if (e.get(3) == null) 0 else e.getInt(3))), 2)}.mean()
+	contrast.registerTempTable("predict")	
+###结果如下
+![](https://github.com/wlwgcdxc/picture/blob/master/GBDT_1.PNG)
+###相当于每个歌手每天播放量的误差在280首左右，效果还不是很尽人意。可借由下面的图，分析下原因
+	%sql
+	select * from predict where artist = "c5f0170f87a2fbb17bf65dc858c745e2" or artist = "099cd99056bf92e5f0e384465890a804" or artist = "3964ee41d4e2ade1957a9135afe1b8dc" or artist = "2e14d32266ee6b4678595f8f50c369ac"
+![](https://github.com/wlwgcdxc/picture/blob/master/GBDT_2.PNG)
+![](https://github.com/wlwgcdxc/picture/blob/master/GBDT_3.PNG)
+	%sql
+	select * from predict where artist = "8fb3cef29f2c266af4c9ecef3b780e97" or artist = "7e0db58c13d033dafe5f5e1e70ff7eb4"
+![](https://github.com/wlwgcdxc/picture/blob/master/GBDT_4.PNG)	
+###可以看到歌手播放量比较小时，拟合的比较好。要是播放量比较大，误差就比较大了。
+#下面可以考虑使用聚类对歌手进行聚类，同一类的歌手使用同一个预测模型，可能效果会更好些。然后就是，造成上述原因，还有可能是数据量太少，加大数据量再试试。同时增长率那个特征，可以考虑使用15天之前的数据做增长量，更合理些。
