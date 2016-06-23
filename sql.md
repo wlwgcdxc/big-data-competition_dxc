@@ -732,7 +732,8 @@
 	%sql
 	select * from predict where artist = "c5f0170f87a2fbb17bf65dc858c745e2" or artist = "099cd99056bf92e5f0e384465890a804" or artist = "3964ee41d4e2ade1957a9135afe1b8dc" or artist = "2e14d32266ee6b4678595f8f50c369ac"
 ![](https://github.com/wlwgcdxc/picture/blob/master/GBDT_2.PNG)
-![](https://github.com/wlwgcdxc/picture/blob/master/GBDT_3.PNG)
+
+![](https://github.com/wlwgcdxc/picture/blob/master/GBDT_3.png)
 	%sql
 	select * from predict where artist = "8fb3cef29f2c266af4c9ecef3b780e97" or artist = "7e0db58c13d033dafe5f5e1e70ff7eb4"
 ![](https://github.com/wlwgcdxc/picture/blob/master/GBDT_4.PNG)	
