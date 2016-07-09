@@ -739,3 +739,174 @@
 ![](https://github.com/wlwgcdxc/picture/blob/master/GBDT_4.PNG)	
 ###可以看到歌手播放量比较小时，拟合的比较好。要是播放量比较大，误差就比较大了。
 #下面可以考虑使用聚类对歌手进行聚类，同一类的歌手使用同一个预测模型，可能效果会更好些。然后就是，造成上述原因，还有可能是数据量太少，加大数据量再试试。同时增长率那个特征，可以考虑使用15天之前的数据做增长量，更合理些。
+##处理相关属性和提取特征的函数
+		import java.text.ParsePosition
+		import java.text.SimpleDateFormat
+		import java.util.Calendar
+		import java.util.Date
+		import java.util.GregorianCalendar
+		import java.lang.Long
+		
+		object Convert extends Serializable{
+		    
+		    def findYesterday( date: String): String = {
+		      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+		      val st = sdf.parse(date, new ParsePosition(0))
+		      val cal : GregorianCalendar  = new GregorianCalendar();
+		      cal.setTime(st);
+		      cal.add(Calendar.DAY_OF_MONTH, +1);
+		      val result = sdf.format(cal.getTime());
+		      return result;
+		    }
+		    
+		    def find10dayBefore( date: String): String = {
+		      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+		      val st = sdf.parse(date, new ParsePosition(0))
+		      val cal : GregorianCalendar  = new GregorianCalendar();
+		      cal.setTime(st);
+		      cal.add(Calendar.DAY_OF_MONTH, +10);
+		      val result = sdf.format(cal.getTime());
+		      return result;
+		    }
+		    
+		    def find20dayBefore( date: String): String = {
+		      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+		      val st = sdf.parse(date, new ParsePosition(0))
+		      val cal : GregorianCalendar  = new GregorianCalendar();
+		      cal.setTime(st);
+		      cal.add(Calendar.DAY_OF_MONTH, +20);
+		      val result = sdf.format(cal.getTime());
+		      return result;
+		    }
+		    
+		    def find40dayBefore( date: String): String = {
+		      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+		      val st = sdf.parse(date, new ParsePosition(0))
+		      val cal : GregorianCalendar  = new GregorianCalendar();
+		      cal.setTime(st);
+		      cal.add(Calendar.DAY_OF_MONTH, +40);
+		      val result = sdf.format(cal.getTime());
+		      return result;
+		    }
+		    
+		    def findOneMonthAfter( date: String): String = {
+		      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+		      val st = sdf.parse(date, new ParsePosition(0))
+		      val cal : GregorianCalendar  = new GregorianCalendar();
+		      cal.setTime(st);
+		      cal.add(Calendar.DAY_OF_MONTH, -30);
+		      val result = sdf.format(cal.getTime());
+		      return result;
+		    }
+		    
+		    def findOneMonthAfterReal( date: String): String = {
+		      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+		      val st = sdf.parse(date, new ParsePosition(0))
+		      val cal : GregorianCalendar  = new GregorianCalendar();
+		      cal.setTime(st);
+		      cal.add(Calendar.DAY_OF_MONTH, +30);
+		      val result = sdf.format(cal.getTime());
+		      return result;
+		    }
+		    
+		    def findTwoMonthAfter( date: String): String = {
+		      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+		      val st = sdf.parse(date, new ParsePosition(0))
+		      val cal : GregorianCalendar  = new GregorianCalendar();
+		      cal.setTime(st);
+		      cal.add(Calendar.DAY_OF_MONTH, -60);
+		      val result = sdf.format(cal.getTime());
+		      return result;
+		    }
+		    
+		    def findTwoMonthAfterReal( date: String): String = {
+		      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+		      val st = sdf.parse(date, new ParsePosition(0))
+		      val cal : GregorianCalendar  = new GregorianCalendar();
+		      cal.setTime(st);
+		      cal.add(Calendar.DAY_OF_MONTH, +60);
+		      val result = sdf.format(cal.getTime());
+		      return result;
+		    }
+		    
+		    //为了找到该天是星期几
+		    def findWeek(date: String) : Int = {
+		      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+		      val st = sdf.parse(date, new ParsePosition(0))
+		      val cal : GregorianCalendar  = new GregorianCalendar();
+		      cal.setTime(st);
+		      val result = cal.get(Calendar.DAY_OF_WEEK)
+		      return result;
+		    }
+		    
+		    //将时间戳转变成具体时间，准备从中提取 小时信息
+		    def TimeStamp2Date(timestampString: String): String= {  
+		      val timestamp = Long.parseLong(timestampString)*1000;  
+		      val date = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new java.util.Date(timestamp));  
+		      return date;  
+		    }
+		    
+		    //将日期转换成时间戳
+		    def date2TimeStamp(dateStr: String): Long ={
+		     val simpleDateFormat = new java.text.SimpleDateFormat("yyyyMMdd");
+		     val date=simpleDateFormat.parse(dateStr);
+		     val timeStemp = date.getTime();
+		     return timeStemp
+		    }
+		    
+		    //为了计算当前听歌时间和发行时间的距离
+		    //str1：当前听歌时间
+		    //str2:发行时间
+		    def getDay(str1: String, str2: String): Long = {
+		      val timeNow = date2TimeStamp(str1)
+		      val publish = date2TimeStamp(str2)
+		      return ((timeNow - publish)/(1000*60*60*24)).toLong
+		    }
+		    
+		    //判断这首歌是在早成，下午，晚上，凌晨哪个时间段听的
+		    def getTime(time: Int): Int = {
+		        if (time > 8 && time <= 12) {
+		            return 0
+		        } else if (time > 12 && time <= 18) {
+		            return 1
+		        } else if (time > 18 && time <= 23) {
+		            return 2
+		        } else {
+		            return 3
+		        }
+		    }
+		} 
+##提取用户行为表，即将每首歌每天的播放次数，下载次数和收藏次数提取出来，存放在/opt/xcdong/trycache/GBDT+PIC/songInfo
+	case class User_action(user_id: String, song_id: String, date
+	
+	val userAction = sc.textFile("/opt/meizhang/trycache/p2/p2_mars_tianchi_user_actions.csv")
+	val userAction_DF = userAction.map(e => e.split(",")).filter(e => e.length == 5).map { e =>
+	    val time = Convert.getTime(Convert.TimeStamp2Date(e(2)).split(" ")(1).split(":")(0).toInt)
+	    User_action(e(0), e(1), e(4), Convert.findWeek(e(4)), if (e(3) == "1") 1 else 0, if (e(3) == "2") 1 else 0, if (e(3) == "3") 1 else 0, if (time == 0) 1 else 0, if (time == 1) 1 else 0, if (time == 2) 1 else 0, if (time == 3) 1 else 0)
+	}.toDF
+	
+	userAction_DF.registerTempTable("user_action")
+	
+	sqlContext.sql("select song_id, date, weekday, sum(play) as play, sum(down) as down, sum(collect) as collect, sum(morning) as morning, sum(afternoon) as afternoon, sum(evening) as evening, sum(midnight) as midnight from user_action group by song_id, date, weekday order by date").rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/songInfo")
+##将歌手信息和歌曲信息拼起来，并存放在/opt/xcdong/trycache/GBDT+PIC/artistInfoTemp
+	case class Artist(song_id: String, artist_id: String, publish_time: String, init_plays: Int, language: Int, Gender: Int)
+	case class SongInfo(song_id: String, date: String, weekday: Int, play: Int, down: Int, collect: Int, morning: Int, afternoon: Int, evening: Int, midnight: Int)
+	
+	val artist_DF = sc.textFile("/opt/meizhang/trycache/p2/p2_mars_tianchi_songs.csv").map(e => e.split(",")).filter(e => e.length == 6).map { e =>
+	    Artist(e(0), e(1), e(2), e(3).toInt, e(4).toInt, e(5).toInt)
+	}.toDF
+	
+	val song_DF = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/songInfo").map(e => e.substring(1, e.length-1).split(",")).filter(e => e.length == 10).map { e =>
+	    SongInfo(e(0), e(1), e(2).toInt, e(3).toInt, e(4).toInt, e(5).toInt, e(6).toInt, e(7).toInt, e(8).toInt, e(9).toInt)
+	}.toDF
+	
+	val artist_info = song_DF.join(artist_DF, Seq("song_id"), "left_outer").select(song_DF("*"), artist_DF("artist_id"), artist_DF("publish_time"), artist_DF("init_plays"), artist_DF("language"), artist_DF("Gender")).rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/artistInfoTemp")
+##处理每个歌手每天的播放记录
+	case class ArtistTemp(song_id: String, date: String, weekday: Int, play: Int, down: Int, collect: Int, morning: Int, afternoon: Int, evening: Int, midnight: Int, artist_id: String, publish_time: Long, init_plays: Int, language: Int, Gender: Int)
+	val artorTemp = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfoTemp").map(e => e.substring(1, e.length-1).split(",")).filter(e => e.length == 15).map { e =>
+	    ArtistTemp(e(0), e(1), e(2).toInt, e(3).toInt, e(4).toInt, e(5).toInt, e(6).toInt, e(7).toInt, e(8).toInt, e(9).toInt, e(10), Convert.getDay(e(1), e(11)), e(12).toInt, e(13).toInt, e(14).toInt)
+	}.toDF
+	artorTemp.registerTempTable("artorTemp1")
+	
+	val artistInfo_first = sqlContext.sql("select artist_id, date, weekday, count(song_id) as song_num, sum(play) as play, sum(down) as down, sum(collect) as collect, sum(morning) as morning, sum(afternoon) as afternoon, sum(evening) as evening, sum(midnight) as midnight, avg(publish_time) as publish_time, avg(init_plays) as init_plays, avg(language) as language, avg(Gender) as Gender from artorTemp1 group by artist_id, date, weekday order by date")
+	artistInfo_first.rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_first")
