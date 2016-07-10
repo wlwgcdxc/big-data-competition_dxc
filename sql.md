@@ -910,3 +910,56 @@
 	
 	val artistInfo_first = sqlContext.sql("select artist_id, date, weekday, count(song_id) as song_num, sum(play) as play, sum(down) as down, sum(collect) as collect, sum(morning) as morning, sum(afternoon) as afternoon, sum(evening) as evening, sum(midnight) as midnight, avg(publish_time) as publish_time, avg(init_plays) as init_plays, avg(language) as language, avg(Gender) as Gender from artorTemp1 group by artist_id, date, weekday order by date")
 	artistInfo_first.rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_first")
+##获取歌手前10天，前20天，前40天的数据，作为特征，同时找到歌手30天之后播放量，作为标签
+	case class Artist_ori(artist_id: String, date: String, weekday: Int, song_num: Int, play: Int, down: Int, collect: Int, morning: Int, afternoon: Int, evening: Int, midnight: Int, publish_time: Double, init_plays: Double, language: Double, Gender: Double)
+	val artist_ori = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_first").map { ele =>
+	    val e = ele.substring(1, ele.length-1).split(",")
+	    Artist_ori(e(0), e(1), e(2).toInt, e(3).toInt, e(4).toInt, e(5).toInt, e(6).toInt, e(7).toInt, e(8).toInt, e(9).toInt, e(10).toInt, e(11).toDouble, e(12).toDouble, e(13).toDouble, e(14).toDouble)
+	}.toDF
+	
+	case class Artist_10_before(artist_id: String, date: String, date_10_before: String, play_10_before: Int, down_10_before: Int, collect_10_before: Int)
+	case class Artist_20_before(artist_id: String, date: String, date_20_before: String, play_20_before: Int, down_20_before: Int, collect_20_before: Int)
+	case class Artist_40_before(artist_id: String, date: String, date_40_before: String, play_40_before: Int, down_40_before: Int, collect_40_before: Int)
+	case class Artist_one_month_after(artist_id: String, date: String, date_30_after: String, play_30_after: Int)
+	case class Artist_two_month_after(artist_id: String, date: String, date_60_after: String, play_60_after: Int)
+	
+	val artist_10_before = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_first").map { ele =>
+	    val e = ele.substring(1, ele.length-1).split(",")
+	    Artist_10_before(e(0), Convert.find10dayBefore(e(1)), e(1), e(4).toInt, e(5).toInt, e(6).toInt)
+	}.toDF
+	val artist_20_before = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_first").map { ele =>
+	    val e = ele.substring(1, ele.length-1).split(",")
+	    Artist_20_before(e(0), Convert.find20dayBefore(e(1)), e(1), e(4).toInt, e(5).toInt, e(6).toInt)
+	}.toDF
+	val artist_40_before = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_first").map { ele =>
+	    val e = ele.substring(1, ele.length-1).split(",")
+	    Artist_40_before(e(0), Convert.find40dayBefore(e(1)), e(1), e(4).toInt, e(5).toInt, e(6).toInt)
+	}.toDF
+	val artist_one_month_after = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_first").map { ele =>
+	    val e = ele.substring(1, ele.length-1).split(",")
+	    Artist_one_month_after(e(0), Convert.findOneMonthAfter(e(1)), e(1), e(4).toInt)
+	}.toDF
+	val artist_two_month_after = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_first").map { ele =>
+	    val e = ele.substring(1, ele.length-1).split(",")
+	    Artist_two_month_after(e(0), Convert.findTwoMonthAfter(e(1)), e(1), e(4).toInt)
+	}.toDF
+	
+	val artist_temp = artist_ori.join(artist_10_before, Seq("artist_id", "date"), "left_outer").select(artist_ori("artist_id"), artist_ori("date"), artist_10_before("date_10_before"), artist_10_before("play_10_before"), artist_10_before("down_10_before"), artist_10_before("collect_10_before"))
+	
+	val artist_temp1 = artist_temp.join(artist_20_before, Seq("artist_id", "date"), "left_outer").select(artist_temp("artist_id"), artist_temp("date"), artist_temp("date_10_before"), artist_temp("play_10_before"), artist_temp("down_10_before"), artist_temp("collect_10_before"), artist_20_before("date_20_before"), artist_20_before("play_20_before"), artist_20_before("down_20_before"), artist_20_before("collect_20_before"))
+	
+	val artist_temp2 = artist_temp1.join(artist_40_before, Seq("artist_id", "date"), "left_outer").select(artist_temp1("artist_id"), artist_temp1("date"), artist_temp1("date_10_before"), artist_temp1("play_10_before"), artist_temp1("down_10_before"), artist_temp1("collect_10_before"), artist_temp1("date_20_before"), artist_temp1("play_20_before"), artist_temp1("down_20_before"), artist_temp1("collect_20_before"), artist_40_before("date_40_before"), artist_40_before("play_40_before"), artist_40_before("down_40_before"), artist_40_before("collect_40_before"))
+	
+	sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_temp").map(e => e.replace("null", "0")).repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_temp1")
+	
+	case class Artist_grow(artist_id: String, date: String, date_10_before: String, play_10_before: Int, down_10_before: Int, collect_10_before: Int, play_10_grow: Int, down_10_grow: Int, collect_10_grow: Int, date_20_before: String, play_20_before: Int, down_20_before: Int, collect_20_before: Int, play_20_grow: Int, down_20_grow: Int, collect_20_grow: Int, date_30_after: String, play_30_after: Int, date_60_after: String, play_60_after: Int)
+
+	val artistInfo_second = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_temp1").map { ele =>
+	    val e = ele.substring(1, ele.length-1).split(",")
+	    Artist_grow(e(0), e(1), e(2), e(3).toInt, e(4).toInt, e(5).toInt, (e(3).toInt - e(7).toInt), (e(4).toInt - e(8).toInt), (e(5).toInt - e(9).toInt), e(6), e(7).toInt, e(8).toInt, e(9).toInt, (e(7).toInt - e(11).toInt), (e(8).toInt - e(12).toInt), (e(9).toInt - e(13).toInt), e(14), e(15).toInt, e(16), e(17).toInt)
+	}.toDF
+	artistInfo_second.registerTempTable("artistInfo_second")
+	sqlContext.sql("select * from artistInfo_second order by date").rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_second")
+	
+	val artist_final = artist_ori.join(artistInfo_second, Seq("artist_id", "date"), "left_outer")
+	artist_final.rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_final")
