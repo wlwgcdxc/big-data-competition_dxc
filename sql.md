@@ -1196,6 +1196,16 @@
 	select * from predict where artist = "c5f0170f87a2fbb17bf65dc858c745e2" or artist = "099cd99056bf92e5f0e384465890a804" or artist = "3964ee41d4e2ade1957a9135afe1b8dc" or artist = "2e14d32266ee6b4678595f8f50c369ac"
 ![](https://github.com/wlwgcdxc/picture/blob/master/5.PNG)
 
+##下面几张图是预测数据很真实数据的对比
+![](https://github.com/wlwgcdxc/picture/blob/master/6.PNG)
+![](https://github.com/wlwgcdxc/picture/blob/master/7.PNG)
+![](https://github.com/wlwgcdxc/picture/blob/master/8.PNG)
+![](https://github.com/wlwgcdxc/picture/blob/master/9.PNG)
+	从图中可以看到，有些数据预测的还是很好的，但是有些数据预测值和真实值相差很大很大。
+	分析了下原因，这些歌手的播放量，在短时间，有了很大很大的提升，导致，比如7月前几天，播放量很小，但是都后面的时间，播放量激增，所以用前几天的播放量去预测一个月之后的数据，就会明显不对。
+
+	解决的办法，可以遍历下数据，把这种歌手的信息提取出来，使用前一天的去预测，可能会比较好
+
 
 
 
