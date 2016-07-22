@@ -740,142 +740,142 @@
 ###可以看到歌手播放量比较小时，拟合的比较好。要是播放量比较大，误差就比较大了。
 #下面可以考虑使用聚类对歌手进行聚类，同一类的歌手使用同一个预测模型，可能效果会更好些。然后就是，造成上述原因，还有可能是数据量太少，加大数据量再试试。同时增长率那个特征，可以考虑使用15天之前的数据做增长量，更合理些。
 ##处理相关属性和提取特征的函数
-		import java.text.ParsePosition
-		import java.text.SimpleDateFormat
-		import java.util.Calendar
-		import java.util.Date
-		import java.util.GregorianCalendar
-		import java.lang.Long
-		
-		object Convert extends Serializable{
+	import java.text.ParsePosition
+	import java.text.SimpleDateFormat
+	import java.util.Calendar
+	import java.util.Date
+	import java.util.GregorianCalendar
+	import java.lang.Long
+	
+	object Convert extends Serializable{
+	    
+	    def findYesterday( date: String): String = {
+	      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+	      val st = sdf.parse(date, new ParsePosition(0))
+	      val cal : GregorianCalendar  = new GregorianCalendar();
+	      cal.setTime(st);
+	      cal.add(Calendar.DAY_OF_MONTH, +1);
+	      val result = sdf.format(cal.getTime());
+	      return result;
+	    }
+	    
+	    def find10dayBefore( date: String): String = {
+	      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+	      val st = sdf.parse(date, new ParsePosition(0))
+	      val cal : GregorianCalendar  = new GregorianCalendar();
+	      cal.setTime(st);
+	      cal.add(Calendar.DAY_OF_MONTH, +10);
+	      val result = sdf.format(cal.getTime());
+	      return result;
+	    }
+	    
+	    def find20dayBefore( date: String): String = {
+	      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+	      val st = sdf.parse(date, new ParsePosition(0))
+	      val cal : GregorianCalendar  = new GregorianCalendar();
+	      cal.setTime(st);
+	      cal.add(Calendar.DAY_OF_MONTH, +20);
+	      val result = sdf.format(cal.getTime());
+	      return result;
+	    }
+	    
+	    def find40dayBefore( date: String): String = {
+	      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+	      val st = sdf.parse(date, new ParsePosition(0))
+	      val cal : GregorianCalendar  = new GregorianCalendar();
+	      cal.setTime(st);
+	      cal.add(Calendar.DAY_OF_MONTH, +40);
+	      val result = sdf.format(cal.getTime());
+	      return result;
+	    }
 		    
-		    def findYesterday( date: String): String = {
-		      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
-		      val st = sdf.parse(date, new ParsePosition(0))
-		      val cal : GregorianCalendar  = new GregorianCalendar();
-		      cal.setTime(st);
-		      cal.add(Calendar.DAY_OF_MONTH, +1);
-		      val result = sdf.format(cal.getTime());
-		      return result;
-		    }
+	    def findOneMonthAfter( date: String): String = {
+	      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+	      val st = sdf.parse(date, new ParsePosition(0))
+	      val cal : GregorianCalendar  = new GregorianCalendar();
+	      cal.setTime(st);
+	      cal.add(Calendar.DAY_OF_MONTH, -30);
+	      val result = sdf.format(cal.getTime());
+	      return result;
+	    }
+	    
+            def findOneMonthAfterReal( date: String): String = {
+	      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+	      val st = sdf.parse(date, new ParsePosition(0))
+	      val cal : GregorianCalendar  = new GregorianCalendar();
+	      cal.setTime(st);
+	      cal.add(Calendar.DAY_OF_MONTH, +30);
+	      val result = sdf.format(cal.getTime());
+	      return result;
+	     }
 		    
-		    def find10dayBefore( date: String): String = {
-		      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
-		      val st = sdf.parse(date, new ParsePosition(0))
-		      val cal : GregorianCalendar  = new GregorianCalendar();
-		      cal.setTime(st);
-		      cal.add(Calendar.DAY_OF_MONTH, +10);
-		      val result = sdf.format(cal.getTime());
-		      return result;
-		    }
+	    def findTwoMonthAfter( date: String): String = {
+	      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+	      val st = sdf.parse(date, new ParsePosition(0))
+	      val cal : GregorianCalendar  = new GregorianCalendar();
+	      cal.setTime(st);
+	      cal.add(Calendar.DAY_OF_MONTH, -60);
+	      val result = sdf.format(cal.getTime());
+	      return result;
+	    }
 		    
-		    def find20dayBefore( date: String): String = {
-		      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
-		      val st = sdf.parse(date, new ParsePosition(0))
-		      val cal : GregorianCalendar  = new GregorianCalendar();
-		      cal.setTime(st);
-		      cal.add(Calendar.DAY_OF_MONTH, +20);
-		      val result = sdf.format(cal.getTime());
-		      return result;
-		    }
+	    def findTwoMonthAfterReal( date: String): String = {
+	      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+	      val st = sdf.parse(date, new ParsePosition(0))
+	      val cal : GregorianCalendar  = new GregorianCalendar();
+	      cal.setTime(st);
+	      cal.add(Calendar.DAY_OF_MONTH, +60);
+	      val result = sdf.format(cal.getTime());
+	      return result;
+	    }
 		    
-		    def find40dayBefore( date: String): String = {
-		      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
-		      val st = sdf.parse(date, new ParsePosition(0))
-		      val cal : GregorianCalendar  = new GregorianCalendar();
-		      cal.setTime(st);
-		      cal.add(Calendar.DAY_OF_MONTH, +40);
-		      val result = sdf.format(cal.getTime());
-		      return result;
-		    }
+	    //为了找到该天是星期几
+	    def findWeek(date: String) : Int = {
+	      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
+	      val st = sdf.parse(date, new ParsePosition(0))
+	      val cal : GregorianCalendar  = new GregorianCalendar();
+	      cal.setTime(st);
+	      val result = cal.get(Calendar.DAY_OF_WEEK)
+	      return result;
+	    }
 		    
-		    def findOneMonthAfter( date: String): String = {
-		      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
-		      val st = sdf.parse(date, new ParsePosition(0))
-		      val cal : GregorianCalendar  = new GregorianCalendar();
-		      cal.setTime(st);
-		      cal.add(Calendar.DAY_OF_MONTH, -30);
-		      val result = sdf.format(cal.getTime());
-		      return result;
-		    }
+	    //将时间戳转变成具体时间，准备从中提取 小时信息
+	    def TimeStamp2Date(timestampString: String): String= {  
+	      val timestamp = Long.parseLong(timestampString)*1000;  
+	      val date = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new java.util.Date(timestamp));  
+	      return date;  
+	    }
+	    
+	    //将日期转换成时间戳
+	    def date2TimeStamp(dateStr: String): Long ={
+	     val simpleDateFormat = new java.text.SimpleDateFormat("yyyyMMdd");
+	     val date=simpleDateFormat.parse(dateStr);
+	     val timeStemp = date.getTime();
+	     return timeStemp
+	    }
 		    
-		    def findOneMonthAfterReal( date: String): String = {
-		      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
-		      val st = sdf.parse(date, new ParsePosition(0))
-		      val cal : GregorianCalendar  = new GregorianCalendar();
-		      cal.setTime(st);
-		      cal.add(Calendar.DAY_OF_MONTH, +30);
-		      val result = sdf.format(cal.getTime());
-		      return result;
-		    }
-		    
-		    def findTwoMonthAfter( date: String): String = {
-		      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
-		      val st = sdf.parse(date, new ParsePosition(0))
-		      val cal : GregorianCalendar  = new GregorianCalendar();
-		      cal.setTime(st);
-		      cal.add(Calendar.DAY_OF_MONTH, -60);
-		      val result = sdf.format(cal.getTime());
-		      return result;
-		    }
-		    
-		    def findTwoMonthAfterReal( date: String): String = {
-		      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
-		      val st = sdf.parse(date, new ParsePosition(0))
-		      val cal : GregorianCalendar  = new GregorianCalendar();
-		      cal.setTime(st);
-		      cal.add(Calendar.DAY_OF_MONTH, +60);
-		      val result = sdf.format(cal.getTime());
-		      return result;
-		    }
-		    
-		    //为了找到该天是星期几
-		    def findWeek(date: String) : Int = {
-		      val sdf : SimpleDateFormat =new SimpleDateFormat("yyyyMMdd")
-		      val st = sdf.parse(date, new ParsePosition(0))
-		      val cal : GregorianCalendar  = new GregorianCalendar();
-		      cal.setTime(st);
-		      val result = cal.get(Calendar.DAY_OF_WEEK)
-		      return result;
-		    }
-		    
-		    //将时间戳转变成具体时间，准备从中提取 小时信息
-		    def TimeStamp2Date(timestampString: String): String= {  
-		      val timestamp = Long.parseLong(timestampString)*1000;  
-		      val date = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm:ss").format(new java.util.Date(timestamp));  
-		      return date;  
-		    }
-		    
-		    //将日期转换成时间戳
-		    def date2TimeStamp(dateStr: String): Long ={
-		     val simpleDateFormat = new java.text.SimpleDateFormat("yyyyMMdd");
-		     val date=simpleDateFormat.parse(dateStr);
-		     val timeStemp = date.getTime();
-		     return timeStemp
-		    }
-		    
-		    //为了计算当前听歌时间和发行时间的距离
-		    //str1：当前听歌时间
-		    //str2:发行时间
-		    def getDay(str1: String, str2: String): Long = {
-		      val timeNow = date2TimeStamp(str1)
-		      val publish = date2TimeStamp(str2)
-		      return ((timeNow - publish)/(1000*60*60*24)).toLong
-		    }
-		    
-		    //判断这首歌是在早成，下午，晚上，凌晨哪个时间段听的
-		    def getTime(time: Int): Int = {
-		        if (time > 8 && time <= 12) {
-		            return 0
-		        } else if (time > 12 && time <= 18) {
-		            return 1
-		        } else if (time > 18 && time <= 23) {
-		            return 2
-		        } else {
-		            return 3
-		        }
-		    }
-		} 
+	    //为了计算当前听歌时间和发行时间的距离
+	    //str1：当前听歌时间
+	    //str2:发行时间
+	    def getDay(str1: String, str2: String): Long = {
+	      val timeNow = date2TimeStamp(str1)
+	      val publish = date2TimeStamp(str2)
+	      return ((timeNow - publish)/(1000*60*60*24)).toLong
+	    }
+	    
+	    //判断这首歌是在早成，下午，晚上，凌晨哪个时间段听的
+	    def getTime(time: Int): Int = {
+	        if (time > 8 && time <= 12) {
+	            return 0
+	        } else if (time > 12 && time <= 18) {
+	            return 1
+	        } else if (time > 18 && time <= 23) {
+	            return 2
+	        } else {
+	            return 3
+	        }
+	    }
+	} 
 ##提取用户行为表，即将每首歌每天的播放次数，下载次数和收藏次数提取出来，存放在/opt/xcdong/trycache/GBDT+PIC/songInfo
 	case class User_action(user_id: String, song_id: String, date
 	
@@ -964,261 +964,235 @@
 	val artist_final = artist_ori.join(artistInfo_second, Seq("artist_id", "date"), "left_outer")
 	artist_final.rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_final")
 	
+##数据更换后，先用之前的方法处理下，看下结果(用GBDT做下分类)	
+	import org.apache.spark.mllib.regression.LabeledPoint
+	import org.apache.spark.mllib.linalg.Vectors
+	//开始预测前，准备数据
+	val data = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_final").map(e => e.substring(1, e.length-1).split(","))
+	val oneMonthAfterData = data.filter(e => e(1).charAt(5)<'7').map(s => LabeledPoint(s(30).toDouble, Vectors.dense(s(2).toDouble, s(3).toDouble, s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble))).cache
+	
+##使用GBDT训练数据
+	import org.apache.spark.mllib.tree.GradientBoostedTrees
+	import org.apache.spark.mllib.tree.configuration.BoostingStrategy
+	import org.apache.spark.mllib.tree.model.GradientBoostedTreesModel
+	import org.apache.spark.mllib.util.MLUtils
+	
+	//通常GRDT使用多个深度小的树，进行预测，效果比较好
+	// The defaultParams for Regression use SquaredError by default.
+	//boostingStrategy.numIterations = 3 //这个默认的是100，也就是会产生100个树
+	//boostingStrategy.learningRate = 0.1 //学习率默认的是0.1
+	val boostingStrategy = BoostingStrategy.defaultParams("Regression")
+	boostingStrategy.treeStrategy.maxDepth = 5
+	boostingStrategy.treeStrategy.numClasses = 2
+	boostingStrategy.numIterations = 330
+	// Empty categoricalFeaturesInfo indicates all features are continuous.
+	boostingStrategy.treeStrategy.categoricalFeaturesInfo = Map[Int, Int]((0, 8), (12, 4))
+	val oneMonthAfterModel = GradientBoostedTrees.train(oneMonthAfterData, boostingStrategy)
+	// 看看在训练数据上拟合的怎么样
+	val oneMonthLabelsAndPredictions = oneMonthAfterData.map { point =>
+	  val prediction = oneMonthAfterModel.predict(point.features)
+	  (point.label, prediction)
+	}
+	val oneMonthTestMSE = oneMonthLabelsAndPredictions.map{ case(v, p) => math.pow((v - p), 2)}.mean()
+	println("after one month, Test Mean Squared Error = " + oneMonthTestMSE)
+	//println("Learned regression GBT model:\n" + oneMonthAfterModel.toDebugString)
+
+##获取需要预测的数据，并用GBDT训练好的模型，去预测，然后将预测出的数据写到文件中
+	import org.apache.spark.mllib.regression.LabeledPoint
+	import org.apache.spark.mllib.linalg.Vectors
+	
+	case class PredictArtistInfo( artist: String, date: String, predict: Int)
+	case class RealArtistInfo( artist: String, date: String, playTimes: Int)
+	val data = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_final").map(ele => ele.substring(1, ele.length-1).split(","))
+	
+	val _7to8 = data.filter(e => e(1).charAt(5) == '7').map { s =>
+	    val prediction = oneMonthAfterModel.predict(Vectors.dense(s(2).toDouble, s(3).toDouble, s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble))
+	    (s(0), Convert.findOneMonthAfterReal(s(1)), prediction)
+	}.map { e =>
+	    PredictArtistInfo(e._1, e._2, e._3.toInt)
+	}.toDF
+	
+	_7to8.rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/one_month/predict_data_8")
+
+##拿到预测的数据，和实际的数据，对比，算出均方差
+	val predict_data = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/one_month/predict_data_8").map(ele => ele.substring(1, ele.length-1).split(",")).map { e =>
+	    PredictArtistInfo(e(0), e(1), e(2).toInt)
+	}.toDF
+	
+	val real_data = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_final").map(ele => ele.substring(1, ele.length-1).split(",")).filter(e => e(1).charAt(5) == '8').map { e =>
+	    RealArtistInfo(e(0), e(1), e(4).toInt)
+	}.toDF
+	
+	val contrast = real_data.join(predict_data, Seq("date", "artist"), "left_outer").select(real_data("*"), predict_data("predict"))
+	contrast.rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/one_month/contrast_data_8")
+	contrast.map{ e => math.pow((e.getInt(2) - (if (e.get(3) == null) 0 else e.getInt(3))), 2)}.mean()
+	contrast.registerTempTable("predict")  
+![](https://github.com/wlwgcdxc/picture/blob/master/1.PNG)	
+	从图中可以看出，数据量大了3倍后，预测的准确度降低了很多
+
+##从图像上直观的看
+	%sql
+	select * from predict where artist = "c5f0170f87a2fbb17bf65dc858c745e2" or artist = "099cd99056bf92e5f0e384465890a804" or artist = "3964ee41d4e2ade1957a9135afe1b8dc" or artist = "2e14d32266ee6b4678595f8f50c369ac"
+![](https://github.com/wlwgcdxc/picture/blob/master/2.PNG)	
+	%sql select * from predict where artist = "8fb3cef29f2c266af4c9ecef3b780e97" or artist = "7e0db58c13d033dafe5f5e1e70ff7eb4" 
+![](https://github.com/wlwgcdxc/picture/blob/master/3.PNG)
+
+#接下来使用二分的keans先做聚类，再对聚类后的数据，用GBDT来预测。效果会有所提升
+##用二分的keans做聚类
+	import org.apache.spark.{SparkContext, SparkConf}
+	import org.apache.spark.mllib.clustering.{KMeans, KMeansModel}
+	import org.apache.spark.mllib.linalg.Vectors
+	
+	//准备数据
+	val rawTrainingData = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_final").map(e => e.substring(1, e.length-1).split(","))
+	val parsedTrainingData = rawTrainingData.map(s => Vectors.dense(s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble)).cache
+	
+	// Cluster the data into two classes using KMeans
+	val numClusters = 4 //预测分为3个簇类
+	val numIterations = 50; //迭代20次
+	val runTimes = 20 //运行10次，选出最优解
+	var clusterIndex:Int = 0
+	
+	//预测模型
+	val clusters_4:KMeansModel = KMeans.train(parsedTrainingData, numClusters, numIterations,runTimes)
+	println("Cluster Number:" + clusters_4.clusterCenters.length)
+	println("Cluster Centers Information Overview:")
+	clusters_4.clusterCenters.foreach { x => 
+	        println("Center Point of Cluster " + clusterIndex + ":")
+	        println(x)
+	        clusterIndex += 1
+	}
+	
+	val ssd = clusters_4.computeCost(parsedTrainingData)
+	println("sum of squared distances of points to their nearest center when k=" + numClusters + " -> "+ ssd)
+##使用聚类模型，将训练数据分别属于哪个类别，计算出来
+	val predictClusters = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_final").map(e => e.substring(1, e.length-1).split(","))
+	val predictClusters_1 = predictClusters.map{ s => 
+	                                        val cluster_type_4 = clusters_4.predict(Vectors.dense(s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble))
+	                                        (s ++ Array(cluster_type_3.toString) ++ Array(cluster_type_4.toString)).toSeq
+	}.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/one_month/k-means/artistInfo_final_cluster")
+
+
+
+##4种类型的数据，分别用GBDT去训练。
+	import org.apache.spark.mllib.tree.model.GradientBoostedTreesModel
+	import org.apache.spark.mllib.util.MLUtils
+	
+	val data = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/one_month/k-means/artistInfo_final_cluster").map(e => e.substring(13, e.length-1).split(",").map(_.trim))
+	
+	val oneMonthAfterData_0 = data.filter(e => e(1).charAt(5)<'7' && e(34) == "0").map(s => LabeledPoint(s(30).toDouble, Vectors.dense(s(2).toDouble, s(3).toDouble, s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble))).cache
+	
+	val oneMonthAfterData_1 = data.filter(e => e(1).charAt(5)<'7' && e(34) == "1").map(s => LabeledPoint(s(30).toDouble, Vectors.dense(s(2).toDouble, s(3).toDouble, s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble))).cache
+	
+	val oneMonthAfterData_2 = data.filter(e => e(1).charAt(5)<'7' && e(34) == "2").map(s => LabeledPoint(s(30).toDouble, Vectors.dense(s(2).toDouble, s(3).toDouble, s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble))).cache
+	
+	val oneMonthAfterData_3 = data.filter(e => e(1).charAt(5)<'7' && e(34) == "3").map(s => LabeledPoint(s(30).toDouble, Vectors.dense(s(2).toDouble, s(3).toDouble, s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble))).cache
+	
+	//通常GRDT使用多个深度小的树，进行预测，效果比较好
+	// The defaultParams for Regression use SquaredError by default.
+	//boostingStrategy.numIterations = 3 //这个默认的是100，也就是会产生100个树
+	//boostingStrategy.learningRate = 0.1 //学习率默认的是0.1
+	val boostingStrategy = BoostingStrategy.defaultParams("Regression")
+	boostingStrategy.treeStrategy.maxDepth = 5
+	boostingStrategy.treeStrategy.numClasses = 2
+	boostingStrategy.numIterations = 330
+	// Empty categoricalFeaturesInfo indicates all features are continuous.
+	boostingStrategy.treeStrategy.categoricalFeaturesInfo = Map[Int, Int]((0, 8), (12, 4))
+	
+	val oneMonthAfterModel_0 = GradientBoostedTrees.train(oneMonthAfterData_0, boostingStrategy)
+	val oneMonthAfterModel_1 = GradientBoostedTrees.train(oneMonthAfterData_1, boostingStrategy)
+	val oneMonthAfterModel_2 = GradientBoostedTrees.train(oneMonthAfterData_2, boostingStrategy)
+	val oneMonthAfterModel_3 = GradientBoostedTrees.train(oneMonthAfterData_3, boostingStrategy)
+	
+	// 看看在训练数据上拟合的怎么样
+	val oneMonthLabelsAndPredictions_0 = oneMonthAfterData_0.map { point =>
+	  val prediction = oneMonthAfterModel_0.predict(point.features)
+	  (point.label, prediction)
+	}
+	val oneMonthLabelsAndPredictions_1 = oneMonthAfterData_1.map { point =>
+	  val prediction = oneMonthAfterModel_1.predict(point.features)
+	  (point.label, prediction)
+	}
+	val oneMonthLabelsAndPredictions_2 = oneMonthAfterData_2.map { point =>
+	  val prediction = oneMonthAfterModel_2.predict(point.features)
+	  (point.label, prediction)
+	}
+	val oneMonthLabelsAndPredictions_3 = oneMonthAfterData_3.map { point =>
+	  val prediction = oneMonthAfterModel_3.predict(point.features)
+	  (point.label, prediction)
+	}
+	
+	val oneMonthTestMSE_0 = oneMonthLabelsAndPredictions_0.map{ case(v, p) => math.pow((v - p), 2)}.mean()
+	println("after one month, Test Mean Squared Error_0 = " + oneMonthTestMSE_0)
+	val oneMonthTestMSE_1 = oneMonthLabelsAndPredictions_1.map{ case(v, p) => math.pow((v - p), 2)}.mean()
+	println("after one month, Test Mean Squared Error_1 = " + oneMonthTestMSE_1)
+	val oneMonthTestMSE_2 = oneMonthLabelsAndPredictions_2.map{ case(v, p) => math.pow((v - p), 2)}.mean()
+	println("after one month, Test Mean Squared Error_2 = " + oneMonthTestMSE_2)
+	val oneMonthTestMSE_3 = oneMonthLabelsAndPredictions_3.map{ case(v, p) => math.pow((v - p), 2)}.mean()
+	println("after one month, Test Mean Squared Error_3 = " + oneMonthTestMSE_3)
+	//println("Learned regression GBT model:\n" + oneMonthAfterModel.toDebugString)
+##然后，分别用四个类别的GBDT模型去预测数据，将预测后的数据保存起来
+	import org.apache.spark.mllib.regression.LabeledPoint
+	import org.apache.spark.mllib.linalg.Vectors
+	
+	case class PredictArtistInfo( artist: String, date: String, predict: Int, cluster: Int)
+	case class RealArtistInfo( artist: String, date: String, playTimes: Int)
+	val data = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/one_month/k-means/artistInfo_final_cluster").map(e => e.substring(13, e.length-1).split(",").map(_.trim))
+	
+	val _7to8_0 = data.filter(e => e(1).charAt(5) == '7' && e(34) == "0").map { s =>
+	    val prediction = oneMonthAfterModel_0.predict(Vectors.dense(s(2).toDouble, s(3).toDouble, s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble))
+	    (s(0), Convert.findOneMonthAfterReal(s(1)), prediction, s(33))
+	}.map { e =>
+	    PredictArtistInfo(e._1, e._2, e._3.toInt, e._4.toInt)
+	}.toDF
+	
+	val _7to8_1 = data.filter(e => e(1).charAt(5) == '7' && e(34) == "1").map { s =>
+	    val prediction = oneMonthAfterModel_1.predict(Vectors.dense(s(2).toDouble, s(3).toDouble, s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble))
+	    (s(0), Convert.findOneMonthAfterReal(s(1)), prediction, s(33))
+	}.map { e =>
+	    PredictArtistInfo(e._1, e._2, e._3.toInt, e._4.toInt)
+	}.toDF
+	
+	val _7to8_2 = data.filter(e => e(1).charAt(5) == '7' && e(34) == "2").map { s =>
+	    val prediction = oneMonthAfterModel_2.predict(Vectors.dense(s(2).toDouble, s(3).toDouble, s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble))
+	    (s(0), Convert.findOneMonthAfterReal(s(1)), prediction, s(33))
+	}.map { e =>
+	    PredictArtistInfo(e._1, e._2, e._3.toInt, e._4.toInt)
+	}.toDF
+	
+	val _7to8_3 = data.filter(e => e(1).charAt(5) == '7' && e(34) == "3").map { s =>
+	    val prediction = oneMonthAfterModel_3.predict(Vectors.dense(s(2).toDouble, s(3).toDouble, s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble))
+	    (s(0), Convert.findOneMonthAfterReal(s(1)), prediction, s(33))
+	}.map { e =>
+	    PredictArtistInfo(e._1, e._2, e._3.toInt, e._4.toInt)
+	}.toDF
+	
+	_7to8_0.unionAll(_7to8_1).unionAll(_7to8_2).unionAll(_7to8_3).rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/one_month/k-means/4-k/predict_data_8")
+##讲预测数据和实际数据，作对比，看看均方误差
+	val predict_data = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/one_month/k-means/4-k/predict_data_8").map(ele => ele.substring(1, ele.length-1).split(",")).map { e =>
+	    PredictArtistInfo(e(0), e(1), e(2).toInt, e(3).toInt)
+	}.toDF
+	
+	val real_data = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_final").map(ele => ele.substring(1, ele.length-1).split(",")).filter(e => e(1).charAt(5) == '8').map { e =>
+	    RealArtistInfo(e(0), e(1), e(4).toInt)
+	}.toDF
+	
+	val contrast = real_data.join(predict_data, Seq("date", "artist"), "left_outer").select(real_data("*"), predict_data("predict"), predict_data("cluster")).orderBy("date")
+	contrast.rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/one_month/k-means/4-k/contrast_data_8")
+	contrast.map{ e => math.pow((e.getInt(2) - (if (e.get(3) == null) 0 else e.getInt(3))), 2)}.mean()
 	
 	
+	contrast.rdd.filter(e => e.get(3) != null).filter{e => (e.getInt(2) - e.getInt(3)) > 500}.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/one_month/k-means/4-k/contrast_data_8_strange")
 	
 	
-import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.mllib.linalg.Vectors
-//开始预测前，准备数据
-val data = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_final").map(e => e.substring(1, e.length-1).split(","))
-val oneMonthAfterData = data.filter(e => e(1).charAt(5)<'7').map(s => LabeledPoint(s(30).toDouble, Vectors.dense(s(2).toDouble, s(3).toDouble, s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble))).cache
-
-
-
-import org.apache.spark.mllib.tree.GradientBoostedTrees
-import org.apache.spark.mllib.tree.configuration.BoostingStrategy
-import org.apache.spark.mllib.tree.model.GradientBoostedTreesModel
-import org.apache.spark.mllib.util.MLUtils
-
-//通常GRDT使用多个深度小的树，进行预测，效果比较好
-// The defaultParams for Regression use SquaredError by default.
-//boostingStrategy.numIterations = 3 //这个默认的是100，也就是会产生100个树
-//boostingStrategy.learningRate = 0.1 //学习率默认的是0.1
-val boostingStrategy = BoostingStrategy.defaultParams("Regression")
-boostingStrategy.treeStrategy.maxDepth = 5
-boostingStrategy.treeStrategy.numClasses = 2
-boostingStrategy.numIterations = 330
-// Empty categoricalFeaturesInfo indicates all features are continuous.
-boostingStrategy.treeStrategy.categoricalFeaturesInfo = Map[Int, Int]((0, 8), (12, 4))
-val oneMonthAfterModel = GradientBoostedTrees.train(oneMonthAfterData, boostingStrategy)
-// 看看在训练数据上拟合的怎么样
-val oneMonthLabelsAndPredictions = oneMonthAfterData.map { point =>
-  val prediction = oneMonthAfterModel.predict(point.features)
-  (point.label, prediction)
-}
-val oneMonthTestMSE = oneMonthLabelsAndPredictions.map{ case(v, p) => math.pow((v - p), 2)}.mean()
-println("after one month, Test Mean Squared Error = " + oneMonthTestMSE)
-//println("Learned regression GBT model:\n" + oneMonthAfterModel.toDebugString)
-
-
-
-
-
-
-import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.mllib.linalg.Vectors
-
-case class PredictArtistInfo( artist: String, date: String, predict: Int)
-case class RealArtistInfo( artist: String, date: String, playTimes: Int)
-val data = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_final").map(ele => ele.substring(1, ele.length-1).split(","))
-
-val _7to8 = data.filter(e => e(1).charAt(5) == '7').map { s =>
-    val prediction = oneMonthAfterModel.predict(Vectors.dense(s(2).toDouble, s(3).toDouble, s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble))
-    (s(0), Convert.findOneMonthAfterReal(s(1)), prediction)
-}.map { e =>
-    PredictArtistInfo(e._1, e._2, e._3.toInt)
-}.toDF
-
-_7to8.rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/one_month/predict_data_8")
-
-
-
-
-
-
-val predict_data = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/one_month/predict_data_8").map(ele => ele.substring(1, ele.length-1).split(",")).map { e =>
-    PredictArtistInfo(e(0), e(1), e(2).toInt)
-}.toDF
-
-val real_data = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_final").map(ele => ele.substring(1, ele.length-1).split(",")).filter(e => e(1).charAt(5) == '8').map { e =>
-    RealArtistInfo(e(0), e(1), e(4).toInt)
-}.toDF
-
-val contrast = real_data.join(predict_data, Seq("date", "artist"), "left_outer").select(real_data("*"), predict_data("predict"))
-contrast.rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/one_month/contrast_data_8")
-contrast.map{ e => math.pow((e.getInt(2) - (if (e.get(3) == null) 0 else e.getInt(3))), 2)}.mean()
-contrast.registerTempTable("predict")   
-图1
-
-%sql
-select * from predict where artist = "c5f0170f87a2fbb17bf65dc858c745e2" or artist = "099cd99056bf92e5f0e384465890a804" or artist = "3964ee41d4e2ade1957a9135afe1b8dc" or artist = "2e14d32266ee6b4678595f8f50c369ac"
-图2
-
-
-%sql select * from predict where artist = "8fb3cef29f2c266af4c9ecef3b780e97" or artist = "7e0db58c13d033dafe5f5e1e70ff7eb4" 
-图3
-
-
-//用二分的keans做聚类
-import org.apache.spark.{SparkContext, SparkConf}
-import org.apache.spark.mllib.clustering.{KMeans, KMeansModel}
-import org.apache.spark.mllib.linalg.Vectors
-
-//准备数据
-val rawTrainingData = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_final").map(e => e.substring(1, e.length-1).split(","))
-val parsedTrainingData = rawTrainingData.map(s => Vectors.dense(s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble)).cache
-
-// Cluster the data into two classes using KMeans
-val numClusters = 4 //预测分为3个簇类
-val numIterations = 50; //迭代20次
-val runTimes = 20 //运行10次，选出最优解
-var clusterIndex:Int = 0
-
-//预测模型
-val clusters_4:KMeansModel = KMeans.train(parsedTrainingData, numClusters, numIterations,runTimes)
-println("Cluster Number:" + clusters_4.clusterCenters.length)
-println("Cluster Centers Information Overview:")
-clusters_4.clusterCenters.foreach { x => 
-        println("Center Point of Cluster " + clusterIndex + ":")
-        println(x)
-        clusterIndex += 1
-}
-
-val ssd = clusters_4.computeCost(parsedTrainingData)
-println("sum of squared distances of points to their nearest center when k=" + numClusters + " -> "+ ssd)
-
-
-
-
-
-
-//准备数据
-val predictClusters = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_final").map(e => e.substring(1, e.length-1).split(","))
-val predictClusters_1 = predictClusters.map{ s => 
-                                        val cluster_type_3 = clusters_3.predict(Vectors.dense(s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble))
-                                        val cluster_type_4 = clusters_4.predict(Vectors.dense(s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble))
-                                        (s ++ Array(cluster_type_3.toString) ++ Array(cluster_type_4.toString)).toSeq
-}.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/one_month/k-means/artistInfo_final_cluster")
-
-
-
-
-import org.apache.spark.mllib.tree.model.GradientBoostedTreesModel
-import org.apache.spark.mllib.util.MLUtils
-
-val data = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/one_month/k-means/artistInfo_final_cluster").map(e => e.substring(13, e.length-1).split(",").map(_.trim))
-
-val oneMonthAfterData_0 = data.filter(e => e(1).charAt(5)<'7' && e(34) == "0").map(s => LabeledPoint(s(30).toDouble, Vectors.dense(s(2).toDouble, s(3).toDouble, s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble))).cache
-
-val oneMonthAfterData_1 = data.filter(e => e(1).charAt(5)<'7' && e(34) == "1").map(s => LabeledPoint(s(30).toDouble, Vectors.dense(s(2).toDouble, s(3).toDouble, s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble))).cache
-
-val oneMonthAfterData_2 = data.filter(e => e(1).charAt(5)<'7' && e(34) == "2").map(s => LabeledPoint(s(30).toDouble, Vectors.dense(s(2).toDouble, s(3).toDouble, s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble))).cache
-
-val oneMonthAfterData_3 = data.filter(e => e(1).charAt(5)<'7' && e(34) == "3").map(s => LabeledPoint(s(30).toDouble, Vectors.dense(s(2).toDouble, s(3).toDouble, s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble))).cache
-
-//通常GRDT使用多个深度小的树，进行预测，效果比较好
-// The defaultParams for Regression use SquaredError by default.
-//boostingStrategy.numIterations = 3 //这个默认的是100，也就是会产生100个树
-//boostingStrategy.learningRate = 0.1 //学习率默认的是0.1
-val boostingStrategy = BoostingStrategy.defaultParams("Regression")
-boostingStrategy.treeStrategy.maxDepth = 5
-boostingStrategy.treeStrategy.numClasses = 2
-boostingStrategy.numIterations = 330
-// Empty categoricalFeaturesInfo indicates all features are continuous.
-boostingStrategy.treeStrategy.categoricalFeaturesInfo = Map[Int, Int]((0, 8), (12, 4))
-
-val oneMonthAfterModel_0 = GradientBoostedTrees.train(oneMonthAfterData_0, boostingStrategy)
-val oneMonthAfterModel_1 = GradientBoostedTrees.train(oneMonthAfterData_1, boostingStrategy)
-val oneMonthAfterModel_2 = GradientBoostedTrees.train(oneMonthAfterData_2, boostingStrategy)
-val oneMonthAfterModel_3 = GradientBoostedTrees.train(oneMonthAfterData_3, boostingStrategy)
-
-// 看看在训练数据上拟合的怎么样
-val oneMonthLabelsAndPredictions_0 = oneMonthAfterData_0.map { point =>
-  val prediction = oneMonthAfterModel_0.predict(point.features)
-  (point.label, prediction)
-}
-val oneMonthLabelsAndPredictions_1 = oneMonthAfterData_1.map { point =>
-  val prediction = oneMonthAfterModel_1.predict(point.features)
-  (point.label, prediction)
-}
-val oneMonthLabelsAndPredictions_2 = oneMonthAfterData_2.map { point =>
-  val prediction = oneMonthAfterModel_2.predict(point.features)
-  (point.label, prediction)
-}
-val oneMonthLabelsAndPredictions_3 = oneMonthAfterData_3.map { point =>
-  val prediction = oneMonthAfterModel_3.predict(point.features)
-  (point.label, prediction)
-}
-
-val oneMonthTestMSE_0 = oneMonthLabelsAndPredictions_0.map{ case(v, p) => math.pow((v - p), 2)}.mean()
-println("after one month, Test Mean Squared Error_0 = " + oneMonthTestMSE_0)
-val oneMonthTestMSE_1 = oneMonthLabelsAndPredictions_1.map{ case(v, p) => math.pow((v - p), 2)}.mean()
-println("after one month, Test Mean Squared Error_1 = " + oneMonthTestMSE_1)
-val oneMonthTestMSE_2 = oneMonthLabelsAndPredictions_2.map{ case(v, p) => math.pow((v - p), 2)}.mean()
-println("after one month, Test Mean Squared Error_2 = " + oneMonthTestMSE_2)
-val oneMonthTestMSE_3 = oneMonthLabelsAndPredictions_3.map{ case(v, p) => math.pow((v - p), 2)}.mean()
-println("after one month, Test Mean Squared Error_3 = " + oneMonthTestMSE_3)
-//println("Learned regression GBT model:\n" + oneMonthAfterModel.toDebugString)
-用4个聚类中心做
-
-
-
-import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.mllib.linalg.Vectors
-
-case class PredictArtistInfo( artist: String, date: String, predict: Int, cluster: Int)
-case class RealArtistInfo( artist: String, date: String, playTimes: Int)
-val data = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/one_month/k-means/artistInfo_final_cluster").map(e => e.substring(13, e.length-1).split(",").map(_.trim))
-
-val _7to8_0 = data.filter(e => e(1).charAt(5) == '7' && e(34) == "0").map { s =>
-    val prediction = oneMonthAfterModel_0.predict(Vectors.dense(s(2).toDouble, s(3).toDouble, s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble))
-    (s(0), Convert.findOneMonthAfterReal(s(1)), prediction, s(33))
-}.map { e =>
-    PredictArtistInfo(e._1, e._2, e._3.toInt, e._4.toInt)
-}.toDF
-
-val _7to8_1 = data.filter(e => e(1).charAt(5) == '7' && e(34) == "1").map { s =>
-    val prediction = oneMonthAfterModel_1.predict(Vectors.dense(s(2).toDouble, s(3).toDouble, s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble))
-    (s(0), Convert.findOneMonthAfterReal(s(1)), prediction, s(33))
-}.map { e =>
-    PredictArtistInfo(e._1, e._2, e._3.toInt, e._4.toInt)
-}.toDF
-
-val _7to8_2 = data.filter(e => e(1).charAt(5) == '7' && e(34) == "2").map { s =>
-    val prediction = oneMonthAfterModel_2.predict(Vectors.dense(s(2).toDouble, s(3).toDouble, s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble))
-    (s(0), Convert.findOneMonthAfterReal(s(1)), prediction, s(33))
-}.map { e =>
-    PredictArtistInfo(e._1, e._2, e._3.toInt, e._4.toInt)
-}.toDF
-
-val _7to8_3 = data.filter(e => e(1).charAt(5) == '7' && e(34) == "3").map { s =>
-    val prediction = oneMonthAfterModel_3.predict(Vectors.dense(s(2).toDouble, s(3).toDouble, s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble))
-    (s(0), Convert.findOneMonthAfterReal(s(1)), prediction, s(33))
-}.map { e =>
-    PredictArtistInfo(e._1, e._2, e._3.toInt, e._4.toInt)
-}.toDF
-
-_7to8_0.unionAll(_7to8_1).unionAll(_7to8_2).unionAll(_7to8_3).rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/one_month/k-means/4-k/predict_data_8")
-
-
-
-
-
-
-val predict_data = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/one_month/k-means/4-k/predict_data_8").map(ele => ele.substring(1, ele.length-1).split(",")).map { e =>
-    PredictArtistInfo(e(0), e(1), e(2).toInt, e(3).toInt)
-}.toDF
-
-val real_data = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_final").map(ele => ele.substring(1, ele.length-1).split(",")).filter(e => e(1).charAt(5) == '8').map { e =>
-    RealArtistInfo(e(0), e(1), e(4).toInt)
-}.toDF
-
-val contrast = real_data.join(predict_data, Seq("date", "artist"), "left_outer").select(real_data("*"), predict_data("predict"), predict_data("cluster")).orderBy("date")
-contrast.rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/one_month/k-means/4-k/contrast_data_8")
-contrast.map{ e => math.pow((e.getInt(2) - (if (e.get(3) == null) 0 else e.getInt(3))), 2)}.mean()
-
-
-contrast.rdd.filter(e => e.get(3) != null).filter{e => (e.getInt(2) - e.getInt(3)) > 500}.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/one_month/k-means/4-k/contrast_data_8_strange")
-
-
-contrast.registerTempTable("predict")   
-图4
-
-
-%sql
-select * from predict where artist = "c5f0170f87a2fbb17bf65dc858c745e2" or artist = "099cd99056bf92e5f0e384465890a804" or artist = "3964ee41d4e2ade1957a9135afe1b8dc" or artist = "2e14d32266ee6b4678595f8f50c369ac"
-图5
+	contrast.registerTempTable("predict")   
+![](https://github.com/wlwgcdxc/picture/blob/master/4.PNG)
+	从图中可以看到，误差减少了很多，差不多平均会差300首，歌手的播放量基数越大，误差越大，基数小，误差越小。还是在可接受的范围内。
+
+##画个图直观的看下
+	%sql
+	select * from predict where artist = "c5f0170f87a2fbb17bf65dc858c745e2" or artist = "099cd99056bf92e5f0e384465890a804" or artist = "3964ee41d4e2ade1957a9135afe1b8dc" or artist = "2e14d32266ee6b4678595f8f50c369ac"
+![](https://github.com/wlwgcdxc/picture/blob/master/5.PNG)
 
 
 
