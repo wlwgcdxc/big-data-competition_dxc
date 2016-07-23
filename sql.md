@@ -233,7 +233,7 @@
 ##结论：
 不能使用线性回归做，数据不是呈线性变化的。
 
-# 准备使用随机森林，试试非线性的回归或者分类去做
+# 第二次尝试：准备使用随机森林，试试非线性的回归或者分类去做
 ###从歌曲信息中获取歌手信息
 	import org.apache.spark.mllib.regression.LabeledPoint
 	import org.apache.spark.mllib.regression.LinearRegressionModel
@@ -298,12 +298,13 @@
 	val songText = sc.textFile("/opt/xcdong/trycache/artistInfo_right")
 	val songinfo = songText.map( s => s.replace("null", "0"))
 	val song = songinfo.repartition(1).saveAsTextFile("/opt/xcdong/trycache/artistInfo_right_1")
-###读取歌手信息
+###准备使用随机森林训练数据，预测未来的播放量
+	//读取歌手信息
 	val result = sc.textFile("/opt/xcdong/trycache/artistInfo_right_1/part-00000") 
 	result.first()
 	result.cache
 	
-###准备训练数据
+	//准备训练数据
 	val parsedPlayData = result.map{s1 => 
 	                            val s = s1.substring(1, s1.length-1).split(",")
 	                            LabeledPoint(s(3).toDouble, Vectors.dense(s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(15).toDouble, s(16).toDouble, s(17).toDouble))}.cache
@@ -323,7 +324,7 @@
 	val parsedAfternoon = result.map{s1 => 
 	                            val s = s1.substring(1, s1.length-1).split(",")
 	                            LabeledPoint(s(7).toDouble, Vectors.dense(s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(15).toDouble, s(16).toDouble, s(17).toDouble))}.cache
-###用随机森林模型开始预测
+	//使用随机森林训练数据
 	import org.apache.spark.mllib.tree.RandomForest
 	import org.apache.spark.mllib.tree.model.RandomForestModel
 	// Train a RandomForest model.
@@ -349,7 +350,8 @@
 	      numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins)
 	val afternoonModel = RandomForest.trainRegressor(parsedAfternoon, categoricalFeaturesInfo,
 	      numTrees, featureSubsetStrategy, impurity, maxDepth, maxBins)  
-###得出模型后，在训练数据上试试，看看误差怎么样
+
+	//得出模型后，在训练数据上试试，看看误差怎么样
 	// Evaluate model on test instances and compute test error
 	val playLabelsAndPredictions = parsedPlayData.map { point =>
 	      val prediction = playModel.predict(point.features)
@@ -402,7 +404,8 @@
 	afternoonLabelsAndPredictions.collect()
 ![](https://github.com/wlwgcdxc/picture/blob/master/15_01.PNG)
 从图中可以看出，在训练数据上还是挺不错的
-###开始提取需要预测的数据（这里希望通过7.30和7.31的数据，预测出8月的数据）
+##使用训练好的模型，预测数据
+	//开始提取需要预测的数据（这里希望通过7.30和7.31的数据，预测出8月的数据）
 	val result_temp = sc.textFile("/opt/xcdong/trycache/artistInfo_right_1/part-00000") 
 	result_temp.first()
 	result_temp.cache
@@ -417,7 +420,7 @@
 	
 	val result_final = sqlContext.sql("select * from artistInfo_right_1 where date = '20150731' ").rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/random_forest_7.31_8/artistInfo_0731")
 	
-	###开始使用模型预测
+	//开始使用模型预测
 	val artistInfo_0731 = sc.textFile("/opt/xcdong/trycache/random_forest_7.31_8/artistInfo_0731")
 	artistInfo_0731.first()
 	artistInfo_0731.cache
@@ -552,10 +555,11 @@
 从图中可以看出，前几天还比较相近，但是到了后几天，就完全不行了，基本后一天的记录和前一天的记录完全相同。说明通过预测值，再去连续预测，肯定是有问题的。
 ###总体标准差如下
 ![](https://github.com/wlwgcdxc/picture/blob/master/15_04.PNG)
-结果比较差
+###结论：
+使用随机森林，可以很好的拟合数据，但是使用8.29,8.30的数据预测8.31，再用预测出的8.31数据，接着去预测，这种做法不太合理。
 
 
-#下面考虑使用（GBDT）预测，其实用随机森林也可以。GBDT的准确率应该更高，但是速度相比较RF慢多了，因为难并行化
+#第三次尝试：下面考虑使用（GBDT）预测，其实用随机森林也可以。GBDT的准确率应该更高，但是速度相比较RF慢多了，因为难并行化
 ###预测的方法是使用当天的数据去预测一个月，两个月之后的数据，然后使用7月份预测一个月之后的数据，6月份预测两个月之后的数据。然后，对他们预测出的8月份的数据做一个加权，得到8月份的数据
 
 ###找到某天一个月，两个月之后的日期，找到某天是星期几
