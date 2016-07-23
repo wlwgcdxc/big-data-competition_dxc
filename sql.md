@@ -1,11 +1,26 @@
-### big-data-competition_dxc
-================================
+#竞赛说明
+###竞赛题目
+以阿里音乐用户前6个月的播放数据为基础，预测后一个月艺人每天歌曲的播放量
+###竞赛数据
+大赛开放抽样的歌曲艺人数据，以及和这些艺人相关的6个月内（20150301-20150830）的用户行为历史记录。
+
+> 用户行为表
+![](https://github.com/wlwgcdxc/picture/blob/master/weight.PNG)
+> 歌曲艺人表
+![](https://github.com/wlwgcdxc/picture/blob/master/weight.PNG)
+> 选手提交结果表
+![](https://github.com/wlwgcdxc/picture/blob/master/weight.PNG)
+
+=============================================================================
 # 考虑使用线性回归做
-### (根据前两天的，预测第三天的播放记录。然后找到每个歌手8.29和8.30的记录，预测出8.31的记录，然后以预测出的8.31的记录为基础继续往下预测)
+##思路
+使用线性回归训练模型，特征主要是歌手前两天的播放量，下载量，收藏量及其他。标签是歌手第三天的播放量。
+之后，预测时，找到每个歌手8.29和8.30的记录，预测出8.31的记录，然后以预测出的8.31的记录为基础继续往下预测
 ##### 解析文本(获得一些基本信息)
     //定义样例类
     case class SongInfo(songid: String, artistid: String, publishTime: String, initialPlayTimes: Int, language: Int, gender: Int)  
-    //将格式化文本转换为RDD，其中文本的每一行就是RDD中的一项纪录
+    
+	//将格式化文本转换为RDD，其中文本的每一行就是RDD中的一项纪录
     val songText = sc.textFile("/opt/meizhang/trycache/mars_tianchi_songs.csv")
     //RDD的transformation，将RDD中存储的string类型转换为定义的样例类SongInfo
     val songinfo = songText.map( s => s.split(",")).filter(x =>x.length==6).map(s=>SongInfo(s(0), s(1), s(2), s(3).toInt, s(4).toInt, s(5).toInt)) 
@@ -21,7 +36,7 @@
     val rawUserAction = useractionInfo.toDF.registerTempTable("rawUserAction")  //包含重复数据
     val useraction = sqlContext.sql("select distinct *  from rawUserAction").registerTempTable("useraction") //去除重复数据
 
-##### 将两张表拼接成为一张大表，sqlContext.sql返回DF
+    //将两张表拼接成为一张大表，sqlContext.sql返回DF
     val allInfo = sqlContext.sql("select date, userid, s.songid, actionType, playTime, artistid, publishtime, initialPlayTimes, language, gender from useraction as u left join songinfo as s on u.songid=s.songid") 
 
 ##### 为了将表示今天的字符串，转换成表示明天的字符串
@@ -59,7 +74,7 @@
     yesterdayDF.registerTempTable("yesterdayDF")
     agoDF.registerTempTable("agoDF")
 
-##### //合并 （3.15 离歌 3 0 0 0）（3.15 离歌 0 4 0 ）（3.15 离歌 0 0 5） 之后需要把这些合并在一起，变成（3.15 离歌 3 4 5)
+	//合并 （3.15 离歌 3 0 0 0）（3.15 离歌 0 4 0 ）（3.15 离歌 0 0 5） 之后需要把这些合并在一起，变成（3.15 离歌 3 4 5)
     val todayCollect = sqlContext.sql("select date,songid, sum(broadcast) as playTime,sum(download) as download,sum(collect) as collect 
     from todayDF group by date,songid order by date")
     val yesterdayCollect = sqlContext.sql("select date,songid, sum(broadcast) as playTime,sum(download) as download,sum(collect) as collect from yesterdayDF group by date,songid order by date")
@@ -68,18 +83,17 @@
     yesterdayCollect.registerTempTable("yesterdayCollect")
     agoCollect.registerTempTable("agoCollect")
 
-##### //将今天，昨天，后天的数据统计到一个表里
     //今天的表跟昨天的表join，生成join1  dataFrame
     val join1 = todayCollect.join(yesterdayCollect, Seq("date", "songid"), "left_outer").select(todayCollect("*"), yesterdayCollect("playTime").as("yesterdayPlay"), yesterdayCollect("download").as("yesterdayDown"), yesterdayCollect("collect").as("yesterdayC")) 
     //前两天的大表与前三天的表左连接
     val joinFinally = join1.join(agoCollect,Seq("date", "songid"), "left_outer").select(join1("*"), agoCollect("playTime").as("agoPlay"), agoCollect("download").as("agoDown"), agoCollect("collect").as("agoC")).registerTempTable("joinFinally")
 
-##### //将统计出的信息与包含歌曲全部信息的allinfo表拼接，将播放量，下载量，收藏量作为标签，即（要预测的量）
+#####将统计出的信息与包含歌曲全部信息的allinfo表拼接，将播放量，下载量，收藏量作为标签，即（要预测的量）
     val allSongInfo = sqlContext.sql("select jf.date, jf.songid, al.playTime, download, collect, yesterdayPlay, yesterdayDown, yesterdayC, agoPlay, agoDown, agoC, artistid, publishtime, initialPlayTimes, language, gender from joinFinally as jf, allInfo as al where jf.songid=al.songid and jf.date=al.date order by jf.date").registerTempTable("allSongInfo")
     val finalResult = sqlContext.sql("select * from allSongInfo").rdd.repartition(1).saveAsTextFile("/opt/meizhang/trycache/result_test_final") //这个dataframe包含某天某首歌今天，昨天，前天的播放量，下载量，收藏量, 
 
-#进一步处理(做标准化和PCA)
-----------
+##进一步处理(做标准化和PCA)
+
 ##### 读数据，注册成表
 	//定义样例类
 	case class SongInfo(date: String, songId: String, play: Int, download: Int, collect: Int, yesterdayPlay: Int, yesterdayDown: Int, yesterdayCollect: Int, playRate: Int, downloadRate: Int, collectRate: Int, time: Int, artistid: String, publishtime: Int, initialPlayTimes: Int, language: Int, gender: Int)  
@@ -91,7 +105,8 @@
 	val song = songinfo.toDF
 	song.registerTempTable("songInfo")
 
-##### 把morning和afternoon的信息分开
+#####将歌曲播放时间是早晨还是晚上的信息提取出来	
+	//把morning和afternoon的信息分开
 	def getTimes(t: Int) = if (t < 8) (1, 0) else (0 , 1)
 	
 	case class SongInfo_1(date: String, songId: String, play: Int, download: Int, collect: Int, yesterdayPlay: Int, yesterdayDown: Int, yesterdayCollect: Int, playRate: Int, downloadRate: Int, collectRate: Int, morning: Int, afternoon: Int, artistid: String, publishtime: Int, initialPlayTimes: Int, language: Int, gender: Int)
@@ -100,20 +115,20 @@
 	songInfo_1.registerTempTable("songInfo_1")
 	songInfo_1.show()
 
-##### 把morning和afternoon的信息汇总起来
+    //把morning和afternoon的信息汇总起来
 	val songInfo_2 = sqlContext.sql("select date, songId, play, download, collect, yesterdayPlay, yesterdayDown, yesterdayCollect, playRate, downloadRate, collectRate, sum(morning) as morningTimes, sum(afternoon) as afternoonTimes, artistid, publishtime, initialPlayTimes, language, gender from songInfo_1 group by date,songId,play,download,collect,yesterdayPlay,yesterdayDown,yesterdayCollect,playRate,downloadRate,collectRate,artistid,publishtime,initialPlayTimes,language,gender order by date, songId")
 	songInfo_2.registerTempTable("songInfo_2")
 	songInfo_2.show()
 
-##### <font color="red">保存标准化之前的数据</font>
+##### 先做标准化
 	val result_stand_before = sqlContext.sql("select * from songInfo_2").repartition(1).write.parquet("/opt/xcdong/trycache/result_stand_before") //标准化之前的数据
 
-##### 读数据并注册成表
+    //读数据并注册成表
 	val result = sqlContext.read.parquet("/opt/xcdong/trycache/result_stand_before/part-r-00000-3024dba2-f98e-49d2-b533-6f721c5f589a.gz.parquet")
 	result.first()
     result.registerTempTable("stand_before")
 
-##### 计算特征的均值和方差
+	//计算特征的均值和方差
 	import org.apache.spark.sql.Row
 	import org.apache.spark.mllib.linalg.Vectors  
 	import java.lang.Double
@@ -125,21 +140,23 @@
 	val mean = stat.mean
 	val variance = stat.variance
 
-##### 标准化特征并注册成表（准备对时间排序）
+	//标准化特征并注册成表（准备对时间排序）
 	def normalize(x: Int, y: Double, z:Double) = {(x - y) / z}
 	
 	case class Stand_after(date: String, songId: String, play: Int, download: Int, collect: Int, yesterdayPlay: Double, yesterdayDown: Double, yesterdayCollect: Double, playRate: Double, downloadRate: Double, collectRate: Double, morning: Double, afternoon: Double, artistid: String, publishtime: Double, initialPlayTimes: Double, language: Double, gender: Double)
 	
 	result.map(f => Stand_after(f.getString(0), f.getString(1), f.getInt(2), f.getInt(3), f.getInt(4), normalize(f.getInt(5), mean(0), variance(0)), normalize(f.getInt(6), mean(1), variance(1)), normalize(f.getInt(7), mean(2), variance(2)), normalize(f.getInt(8), mean(3), variance(3)), normalize(f.getInt(9), mean(4), variance(4)),normalize(f.getInt(10), mean(5), variance(5)), normalize(f.getLong(11).toInt, mean(6), variance(6)), normalize(f.getLong(12).toInt, mean(7), variance(7)), f.getString(13), normalize(f.getInt(14), mean(8), variance(8)), normalize(f.getInt(15), mean(9), variance(9)), normalize(f.getInt(16), mean(10), variance(10)), normalize(f.getInt(17), mean(11), variance(11)))).toDF.registerTempTable("stand_after_1")
 
-##### 对时间排序后<font color="red">保存为标准化之后的数据</font>
+	//保存为标准化之后的数据
 	sqlContext.sql("select * from stand_after_1 order by date").repartition(1).write.parquet("/opt/xcdong/trycache/result_stand_after")
 
-##### 读数据,注册成表，方处理
+##### 做PCA
+    //先读数据
 	val stand_after = sqlContext.read.parquet("/opt/xcdong/trycache/result_stand_after/part-r-00000-e67820e0-02f0-4196-ab7f-0054591461aa.gz.parquet")
 	stand_after.registerTempTable("stand_after")
 	stand_after.first()
-##### 对特征进行PCA处理
+    
+	//对特征进行PCA处理
 	import org.apache.spark.mllib.linalg.{Vector, Vectors}
 	import org.apache.spark.mllib.regression.LabeledPoint
 	import org.apache.spark.mllib.feature.PCA
@@ -157,10 +174,11 @@
 	val pca_after= labelsPoint.map(p => p.copy(features = pca.transform(p.features)))
 	
 	pca_after.first().features().size()
-##### <font color="red">保存为PCA之后的数据</font>
+	
+	//保存为PCA之后的数据
 	pca_after.toDF.repartition(1).write.parquet("/opt/xcdong/trycache/pca_after")
 
-### 训练模型
+##  使用线性回归训练数据
 	import org.apache.spark.mllib.regression.LabeledPoint
 	import org.apache.spark.mllib.regression.LinearRegressionModel
 	import org.apache.spark.mllib.regression.LinearRegressionWithSGD
@@ -168,18 +186,20 @@
 	
 	val result = sqlContext.read.parquet("/opt/xcdong/trycache/pca_after/part-r-00000-2d51c0cb-de66-49fa-ba5e-9dec132ddb74.gz.parquet") 
 	result.first()
-##### 生成标签向量	
+	
+	//生成标签向量	
 	val parsedPlayData = result.map(s =>LabeledPoint(s.getStruct(1).getInt(0), s.getAs[Vector]("features")))
 	val parsedDownloadData = result.map(s =>LabeledPoint(s.getStruct(1).getInt(1), s.getAs[Vector]("features")))
 	val parsedCollectData = result.map(s =>LabeledPoint(s.getStruct(1).getInt(2), s.getAs[Vector]("features")))
 
-##### 训练模型
+	//训练模型
 	val numIterations = 10000
 	val stepSize = 0.000000001
 	val playModel = LinearRegressionWithSGD.train(parsedPlayData, numIterations, stepSize)
 	val downloadModel = LinearRegressionWithSGD.train(parsedDownloadData, numIterations, stepSize)
 	val collectModel = LinearRegressionWithSGD.train(parsedCollectData, numIterations, stepSize)
-##### 在测试数据集上判断，模型训练的好坏
+
+	//在测试数据集上判断，模型训练的好坏
 	val valuesAndPredsPlay = parsedPlayData.map { point =>
 		val prediction = playModel.predict(point.features)
 		(point.label, prediction)
