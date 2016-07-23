@@ -4,11 +4,14 @@
 ###竞赛数据
 大赛开放抽样的歌曲艺人数据，以及和这些艺人相关的6个月内（20150301-20150830）的用户行为历史记录。
 
-> 用户行为表
+**用户行为表
+
 ![](https://github.com/wlwgcdxc/picture/blob/master/tianchi1.PNG)
-> 歌曲艺人表
+**歌曲艺人表
+
 ![](https://github.com/wlwgcdxc/picture/blob/master/tianchi2.PNG)
-> 选手提交结果表
+**选手提交结果表
+
 ![](https://github.com/wlwgcdxc/picture/blob/master/tianchi3.PNG)
 
 =============================================================================
