@@ -559,10 +559,11 @@
 使用随机森林，可以很好的拟合数据，但是使用8.29,8.30的数据预测8.31，再用预测出的8.31数据，接着去预测，这种做法不太合理。
 
 
-#第三次尝试：下面考虑使用（GBDT）预测，其实用随机森林也可以。GBDT的准确率应该更高，但是速度相比较RF慢多了，因为难并行化
-###预测的方法是使用当天的数据去预测一个月，两个月之后的数据，然后使用7月份预测一个月之后的数据，6月份预测两个月之后的数据。然后，对他们预测出的8月份的数据做一个加权，得到8月份的数据
+#第三次尝试：考虑使用（GBDT）预测
+##思路
+预测的方法是使用当天的数据去预测一个月，两个月之后的数据，然后使用7月份预测一个月之后的数据（即8月份的数据），6月份预测两个月之后的数据（即8月份的数据）。然后，对他们预测出的8月份的数据做一个加权，得到8月份实际预测的数据。其实用随机森林也可以。GBDT的准确率应该更高，但是速度相比较RF慢多了，因为难并行化。
 
-###找到某天一个月，两个月之后的日期，找到某天是星期几
+###处理相关的特征，具体，找到某天一个月，两个月之后的日期，找到某天是星期几
 	import java.text.ParsePosition
 	import java.text.SimpleDateFormat
 	import java.util.Calendar
@@ -670,7 +671,7 @@
 	trainDataDf_5.rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT/train_data_3-7_ori_tmp")
 	//去掉包含的null值
 	val train_data_result = sc.textFile("/opt/xcdong/trycache/GBDT/train_data_3-7_ori_tmp").map( s => s.replace("null", "0")).repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT/train_data_3-7_end")
-###准备数据
+###准备训练数据
 	import org.apache.spark.mllib.regression.LabeledPoint
 	import org.apache.spark.mllib.linalg.Vectors
 	val data = sc.textFile("/opt/xcdong/trycache/GBDT/train_data_3-7_end").map(ele => ele.substring(1, ele.length-1).split(","))
@@ -678,7 +679,7 @@
 	val oneMonthAfterData = data.filter(e => e(0)<"20150701").map(s => LabeledPoint(s(3).toDouble, Vectors.dense(s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(15).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble, s(22).toDouble))).cache
 	//两月之后歌曲播放量的模型需要的数据
 	val twoMonthAfterData = data.filter(e => e(0)<"20150601").map(s => LabeledPoint(s(5).toDouble, Vectors.dense(s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(15).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble, s(22).toDouble))).cache
-###训练模型
+###使用GBDT训练模型
 	import org.apache.spark.mllib.tree.GradientBoostedTrees
 	import org.apache.spark.mllib.tree.configuration.BoostingStrategy
 	import org.apache.spark.mllib.tree.model.GradientBoostedTreesModel
@@ -771,8 +772,16 @@
 	select * from predict where artist = "8fb3cef29f2c266af4c9ecef3b780e97" or artist = "7e0db58c13d033dafe5f5e1e70ff7eb4"
 ![](https://github.com/wlwgcdxc/picture/blob/master/GBDT_4.PNG)	
 ###可以看到歌手播放量比较小时，拟合的比较好。要是播放量比较大，误差就比较大了。
-#下面可以考虑使用聚类对歌手进行聚类，同一类的歌手使用同一个预测模型，可能效果会更好些。然后就是，造成上述原因，还有可能是数据量太少，加大数据量再试试。同时增长率那个特征，可以考虑使用15天之前的数据做增长量，更合理些。
-##处理相关属性和提取特征的函数
+##结论：
+总体使用GBDT,随机森林，都挺不错，后面加大数据量，试试看效果
+
+
+#第四次尝试：加大数据量，使用GBDT预测，同时增长率那个特征，可以考虑使用15天之前的数据做增长量，更合理些。
+###
+###
+##思路
+这次尝试主要是为第5次结合聚类的尝试做铺垫，看看结合聚类之后，效果会不会变好一些
+###处理相关属性和提取特征的函数
 	import java.text.ParsePosition
 	import java.text.SimpleDateFormat
 	import java.util.Calendar
@@ -909,7 +918,7 @@
 	        }
 	    }
 	} 
-##提取用户行为表，即将每首歌每天的播放次数，下载次数和收藏次数提取出来，存放在/opt/xcdong/trycache/GBDT+PIC/songInfo
+###提取用户行为表，即将每首歌每天的播放次数，下载次数和收藏次数提取出来，存放在/opt/xcdong/trycache/GBDT+PIC/songInfo
 	case class User_action(user_id: String, song_id: String, date
 	
 	val userAction = sc.textFile("/opt/meizhang/trycache/p2/p2_mars_tianchi_user_actions.csv")
@@ -921,7 +930,7 @@
 	userAction_DF.registerTempTable("user_action")
 	
 	sqlContext.sql("select song_id, date, weekday, sum(play) as play, sum(down) as down, sum(collect) as collect, sum(morning) as morning, sum(afternoon) as afternoon, sum(evening) as evening, sum(midnight) as midnight from user_action group by song_id, date, weekday order by date").rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/songInfo")
-##将歌手信息和歌曲信息拼起来，并存放在/opt/xcdong/trycache/GBDT+PIC/artistInfoTemp
+###将歌手信息和歌曲信息拼起来，并存放在/opt/xcdong/trycache/GBDT+PIC/artistInfoTemp
 	case class Artist(song_id: String, artist_id: String, publish_time: String, init_plays: Int, language: Int, Gender: Int)
 	case class SongInfo(song_id: String, date: String, weekday: Int, play: Int, down: Int, collect: Int, morning: Int, afternoon: Int, evening: Int, midnight: Int)
 	
@@ -934,7 +943,7 @@
 	}.toDF
 	
 	val artist_info = song_DF.join(artist_DF, Seq("song_id"), "left_outer").select(song_DF("*"), artist_DF("artist_id"), artist_DF("publish_time"), artist_DF("init_plays"), artist_DF("language"), artist_DF("Gender")).rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/artistInfoTemp")
-##处理每个歌手每天的播放记录
+###处理每个歌手每天的播放记录
 	case class ArtistTemp(song_id: String, date: String, weekday: Int, play: Int, down: Int, collect: Int, morning: Int, afternoon: Int, evening: Int, midnight: Int, artist_id: String, publish_time: Long, init_plays: Int, language: Int, Gender: Int)
 	val artorTemp = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfoTemp").map(e => e.substring(1, e.length-1).split(",")).filter(e => e.length == 15).map { e =>
 	    ArtistTemp(e(0), e(1), e(2).toInt, e(3).toInt, e(4).toInt, e(5).toInt, e(6).toInt, e(7).toInt, e(8).toInt, e(9).toInt, e(10), Convert.getDay(e(1), e(11)), e(12).toInt, e(13).toInt, e(14).toInt)
@@ -943,7 +952,7 @@
 	
 	val artistInfo_first = sqlContext.sql("select artist_id, date, weekday, count(song_id) as song_num, sum(play) as play, sum(down) as down, sum(collect) as collect, sum(morning) as morning, sum(afternoon) as afternoon, sum(evening) as evening, sum(midnight) as midnight, avg(publish_time) as publish_time, avg(init_plays) as init_plays, avg(language) as language, avg(Gender) as Gender from artorTemp1 group by artist_id, date, weekday order by date")
 	artistInfo_first.rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_first")
-##获取歌手前10天，前20天，前40天的数据，作为特征，同时找到歌手30天之后播放量，作为标签
+###获取歌手前10天，前20天，前40天的数据，作为特征，同时找到歌手30天之后播放量，作为标签
 	case class Artist_ori(artist_id: String, date: String, weekday: Int, song_num: Int, play: Int, down: Int, collect: Int, morning: Int, afternoon: Int, evening: Int, midnight: Int, publish_time: Double, init_plays: Double, language: Double, Gender: Double)
 	val artist_ori = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_first").map { ele =>
 	    val e = ele.substring(1, ele.length-1).split(",")
@@ -997,14 +1006,14 @@
 	val artist_final = artist_ori.join(artistInfo_second, Seq("artist_id", "date"), "left_outer")
 	artist_final.rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_final")
 	
-##数据更换后，先用之前的方法处理下，看下结果(用GBDT做下分类)	
+###数据更换后，先用之前的方法处理下，看下结果(用GBDT做下分类)	
 	import org.apache.spark.mllib.regression.LabeledPoint
 	import org.apache.spark.mllib.linalg.Vectors
 	//开始预测前，准备数据
 	val data = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_final").map(e => e.substring(1, e.length-1).split(","))
 	val oneMonthAfterData = data.filter(e => e(1).charAt(5)<'7').map(s => LabeledPoint(s(30).toDouble, Vectors.dense(s(2).toDouble, s(3).toDouble, s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble, s(11).toDouble, s(12).toDouble, s(13).toDouble, s(14).toDouble, s(16).toDouble, s(17).toDouble, s(18).toDouble, s(19).toDouble, s(20).toDouble, s(21).toDouble))).cache
 	
-##使用GBDT训练数据
+###使用GBDT训练数据
 	import org.apache.spark.mllib.tree.GradientBoostedTrees
 	import org.apache.spark.mllib.tree.configuration.BoostingStrategy
 	import org.apache.spark.mllib.tree.model.GradientBoostedTreesModel
@@ -1030,7 +1039,7 @@
 	println("after one month, Test Mean Squared Error = " + oneMonthTestMSE)
 	//println("Learned regression GBT model:\n" + oneMonthAfterModel.toDebugString)
 
-##获取需要预测的数据，并用GBDT训练好的模型，去预测，然后将预测出的数据写到文件中
+###获取需要预测的数据，并用GBDT训练好的模型，去预测，然后将预测出的数据写到文件中
 	import org.apache.spark.mllib.regression.LabeledPoint
 	import org.apache.spark.mllib.linalg.Vectors
 	
@@ -1047,7 +1056,7 @@
 	
 	_7to8.rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/one_month/predict_data_8")
 
-##拿到预测的数据，和实际的数据，对比，算出均方差
+###拿到预测的数据，和实际的数据，对比，算出均方差
 	val predict_data = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/one_month/predict_data_8").map(ele => ele.substring(1, ele.length-1).split(",")).map { e =>
 	    PredictArtistInfo(e(0), e(1), e(2).toInt)
 	}.toDF
@@ -1071,9 +1080,12 @@
 	%sql select * from predict where artist = "8fb3cef29f2c266af4c9ecef3b780e97" or artist = "7e0db58c13d033dafe5f5e1e70ff7eb4" 
 
 ![](https://github.com/wlwgcdxc/picture/blob/master/3.PNG)
-
-#接下来使用二分的keans先做聚类，再对聚类后的数据，用GBDT来预测。效果会有所提升
-##用二分的keans做聚类
+###
+###
+###
+###
+#第5次尝试：使用二分的keans先会歌手做聚类，再使用聚类后的数据，采取GBDT来预测。
+###用二分的keans做聚类
 	import org.apache.spark.{SparkContext, SparkConf}
 	import org.apache.spark.mllib.clustering.{KMeans, KMeansModel}
 	import org.apache.spark.mllib.linalg.Vectors
@@ -1100,7 +1112,7 @@
 	
 	val ssd = clusters_4.computeCost(parsedTrainingData)
 	println("sum of squared distances of points to their nearest center when k=" + numClusters + " -> "+ ssd)
-##使用聚类模型，将训练数据分别属于哪个类别，计算出来
+###使用聚类模型，将训练数据分别属于哪个类别，计算出来
 	val predictClusters = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/artistInfo_final").map(e => e.substring(1, e.length-1).split(","))
 	val predictClusters_1 = predictClusters.map{ s => 
 	                                        val cluster_type_4 = clusters_4.predict(Vectors.dense(s(4).toDouble, s(5).toDouble, s(6).toDouble, s(7).toDouble, s(8).toDouble, s(9).toDouble, s(10).toDouble))
@@ -1109,7 +1121,7 @@
 
 
 
-##4种类型的数据，分别用GBDT去训练。
+###4种类型的数据，分别用GBDT去训练。
 	import org.apache.spark.mllib.tree.model.GradientBoostedTreesModel
 	import org.apache.spark.mllib.util.MLUtils
 	
@@ -1166,7 +1178,7 @@
 	val oneMonthTestMSE_3 = oneMonthLabelsAndPredictions_3.map{ case(v, p) => math.pow((v - p), 2)}.mean()
 	println("after one month, Test Mean Squared Error_3 = " + oneMonthTestMSE_3)
 	//println("Learned regression GBT model:\n" + oneMonthAfterModel.toDebugString)
-##然后，分别用四个类别的GBDT模型去预测数据，将预测后的数据保存起来
+###然后，分别用四个类别的GBDT模型去预测数据，将预测后的数据保存起来
 	import org.apache.spark.mllib.regression.LabeledPoint
 	import org.apache.spark.mllib.linalg.Vectors
 	
@@ -1203,7 +1215,7 @@
 	}.toDF
 	
 	_7to8_0.unionAll(_7to8_1).unionAll(_7to8_2).unionAll(_7to8_3).rdd.repartition(1).saveAsTextFile("/opt/xcdong/trycache/GBDT+PIC/one_month/k-means/4-k/predict_data_8")
-##讲预测数据和实际数据，作对比，看看均方误差
+###将预测数据和实际数据，作对比，看看均方误差
 	val predict_data = sc.textFile("/opt/xcdong/trycache/GBDT+PIC/one_month/k-means/4-k/predict_data_8").map(ele => ele.substring(1, ele.length-1).split(",")).map { e =>
 	    PredictArtistInfo(e(0), e(1), e(2).toInt, e(3).toInt)
 	}.toDF
@@ -1224,23 +1236,19 @@
 ![](https://github.com/wlwgcdxc/picture/blob/master/4.PNG)
 	从图中可以看到，误差减少了很多，差不多平均会差300首，歌手的播放量基数越大，误差越大，基数小，误差越小。还是在可接受的范围内。
 
-##画个图直观的看下
+###画个图直观的看下
 	%sql
 	select * from predict where artist = "c5f0170f87a2fbb17bf65dc858c745e2" or artist = "099cd99056bf92e5f0e384465890a804" or artist = "3964ee41d4e2ade1957a9135afe1b8dc" or artist = "2e14d32266ee6b4678595f8f50c369ac"
 ![](https://github.com/wlwgcdxc/picture/blob/master/5.PNG)
 
-##下面几张图是预测数据很真实数据的对比
+###下面几张图是预测数据很真实数据的对比
 ![](https://github.com/wlwgcdxc/picture/blob/master/6.png)
 ![](https://github.com/wlwgcdxc/picture/blob/master/7.png)
 ![](https://github.com/wlwgcdxc/picture/blob/master/8.png)
 ![](https://github.com/wlwgcdxc/picture/blob/master/9.png)
 
-	从图中可以看到，有些数据预测的还是很好的，但是有些数据预测值和真实值相差很大很大。
-	分析了下原因，这些歌手的播放量，在短时间，有了很大很大的提升，导致，比如7月前几天，播放量很小，但是都后面的时间，播放量激增，所以用前几天的播放量去预测一个月之后的数据，就会明显不对。
-
-	解决的办法，可以遍历下数据，把这种歌手的信息提取出来，使用前一天的去预测，可能会比较好
-
-
-
-
-
+##结论：
+从图中可以看到，有些数据预测的还是很好的，但是有些数据预测值和真实值相差很大很大。
+分析了下原因，这些歌手的播放量，在短时间，有了很大很大的提升，导致，比如7月前几天，播放量很小，但是都后面的时间，播放量激增，所以用前几天的播放量去预测一个月之后的数据，就会明显不对。
+##更进一步的处理：
+解决的办法，可以遍历下数据，把这种歌手的信息提取出来，使用前一天的去预测，可能会比较好
