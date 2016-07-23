@@ -17,7 +17,7 @@
 ![](https://github.com/wlwgcdxc/picture/blob/master/tianchi3.PNG)
 
 =============================================================================
-# 考虑使用线性回归做
+# 第一次尝试：考虑使用线性回归做
 ##思路
 使用线性回归训练模型，特征主要是歌手前两天的播放量，下载量，收藏量及其他。标签是歌手第三天的播放量。
 之后，预测时，找到每个歌手8.29和8.30的记录，预测出8.31的记录，然后以预测出的8.31的记录为基础继续往下预测
@@ -223,11 +223,15 @@
 # 但是，最终结果不是一般的差
 训练出来线性模型的权值如下
 ![](https://github.com/wlwgcdxc/picture/blob/master/weight.PNG)
+可以看到线性方程的权重，基本都是很小很小的小数，说明根本就没有拟合成功
 预测值和标签的对比
 ![](https://github.com/wlwgcdxc/picture/blob/master/predict.PNG)
+预测值和实际值，之间的差距，相差很大很大
 从图中可以看到，标签应该不是成线性变化的
 ![](https://github.com/wlwgcdxc/picture/blob/master/proof1.PNG)
 ![](https://github.com/wlwgcdxc/picture/blob/master/proof2.PNG)
+##结论：
+不能使用线性回归做，数据不是呈线性变化的。
 
 # 准备使用随机森林，试试非线性的回归或者分类去做
 ###从歌曲信息中获取歌手信息
